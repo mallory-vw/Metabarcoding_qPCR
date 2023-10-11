@@ -8,6 +8,7 @@ library(tidyverse)
 setwd("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/")
 
 
+
 #load all data
 metadata <- read.csv("RiverSamplingMetadata_2019_2021.csv",na.strings="")
 
@@ -47,25 +48,33 @@ eDNA_data <- eDNA_data_raw %>%
 
 #separate data by species
 AtlSalmon_eDNA_data <- eDNA_data %>% 
-  select(SampleID,Type,Marker,Taxon,CorrectedReads) %>% 
+  select(SampleID,Type,Marker,Taxon,CorrectedReads,CorrectedPercentReads) %>% 
   filter(Taxon == "Salmo salar") %>% 
   pivot_wider(id_cols = c("SampleID","Type"),
               names_from = Marker,
-              values_from = CorrectedReads)
-
+              values_from = c(CorrectedReads, CorrectedPercentReads)) %>% 
+  relocate(CorrectedPercentReads_12Steleo, .after=CorrectedReads_12Steleo) %>% 
+  relocate(CorrectedPercentReads_MIFISHU, .after=CorrectedReads_MIFISHU) %>% 
+  relocate(CorrectedPercentReads_FISHE, .after=CorrectedReads_FISHE)
+  
 PinkSalmon_eDNA_data <- eDNA_data %>% 
-  select(SampleID,Type,Marker,Taxon,CorrectedReads) %>% 
+  select(SampleID,Type,Marker,Taxon,CorrectedReads,CorrectedPercentReads) %>% 
   filter(Taxon == "Oncorhynchus gorbuscha") %>% 
   pivot_wider(id_cols = c("SampleID","Type"),
               names_from = Marker,
-              values_from = CorrectedReads)
+              values_from = c(CorrectedReads, CorrectedPercentReads)) %>% 
+  relocate(CorrectedPercentReads_12Steleo, .after=CorrectedReads_12Steleo) %>% 
+  relocate(CorrectedPercentReads_MIFISHU, .after=CorrectedReads_MIFISHU) %>% 
+  relocate(CorrectedPercentReads_FISHE, .after=CorrectedReads_FISHE)
 
 Charr_eDNA_data <- eDNA_data %>% 
-  select(SampleID,Type,Marker,Taxon,CorrectedReads) %>% 
+  select(SampleID,Type,Marker,Taxon,CorrectedReads,CorrectedPercentReads) %>% 
   filter(Taxon == "Salvelinus alpinus") %>% 
   pivot_wider(id_cols = c("SampleID","Type"),
               names_from = Marker,
-              values_from = CorrectedReads)
+              values_from = c(CorrectedReads, CorrectedPercentReads)) %>% 
+  relocate(CorrectedPercentReads_MIFISHU, .after=CorrectedReads_MIFISHU) %>% 
+  relocate(CorrectedPercentReads_FISHE, .after=CorrectedReads_FISHE)
 
 
 #####qPCR and eDNA#####
@@ -83,7 +92,7 @@ AtlSalmon_data <- AtlSalmon_eDNA_data %>%
   left_join(metadata)
 
 #export
-write.csv(AtlSalmon_data, "qPCR_eDNA_SalmoSalar_CleanedData_10Oct2023.csv")
+write.csv(AtlSalmon_data, "qPCR_eDNA_SalmoSalar_CleanedData_11Oct2023.csv")
 
 #Pink salmon#
 #check and remove any rows that had inhibition
@@ -99,7 +108,7 @@ PinkSalmon_data <- PinkSalmon_eDNA_data %>%
   left_join(metadata)
 
 #export
-write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_10Oct2023.csv")
+write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_11Oct2023.csv")
 
 #Arctic charr#
 #check and remove any rows that had inhibition
@@ -119,7 +128,7 @@ ArcticCharr_data <- Charr_eDNA_data %>%
   filter()
 
 #export
-write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_10Oct2023.csv")
+write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_11Oct2023.csv")
 
 
 #save workspace
