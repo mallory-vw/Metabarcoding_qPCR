@@ -89,7 +89,8 @@ AtlSalmon_qPCR_data <- AtlSalmon_qPCR_raw %>%
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 AtlSalmon_data <- AtlSalmon_eDNA_data %>% 
   inner_join(AtlSalmon_qPCR_data) %>% 
-  left_join(metadata)
+  left_join(metadata) %>% 
+  relocate(VolFiltered, .before=Sample_Year)
 
 #export
 write.csv(AtlSalmon_data, "qPCR_eDNA_SalmoSalar_CleanedData_11Oct2023.csv")
@@ -105,7 +106,8 @@ PinkSalmon_qPCR_data <- PinkSalmon_qPCR_raw %>%
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 PinkSalmon_data <- PinkSalmon_eDNA_data %>% 
   inner_join(PinkSalmon_qPCR_data) %>% 
-  left_join(metadata)
+  left_join(metadata) %>% 
+  relocate(VolFiltered, .before=Sample_Year)
 
 #export
 write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_11Oct2023.csv")
@@ -125,7 +127,7 @@ ArcticCharr_qPCR_data <- ArcticCharr_qPCR_raw %>%
 ArcticCharr_data <- Charr_eDNA_data %>% 
   inner_join(ArcticCharr_qPCR_data) %>% 
   left_join(metadata) %>% 
-  filter()
+  relocate(VolFiltered, .before=Sample_Year)
 
 #export
 write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_11Oct2023.csv")
