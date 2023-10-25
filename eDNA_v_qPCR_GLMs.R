@@ -9,6 +9,7 @@ library("stargazer")
 library("glmmTMB")
 library("DHARMa")
 library("lme4")
+library("bbmle") #for AICtab
 library("gridExtra")
 library("car")
 library("MuMIn")
@@ -310,6 +311,9 @@ rm(P1_NoZero_NoOut,P1_NoZero,P2_NoZero,
    P3_NoZero_NoOut,P3_NoZero,P4_NoZero,
    P5_NoZero_NoOut,P5_NoZero,P6_NoZero)
 
+#export data
+write.csv(All_data_NoZero_Prop_NoOutliers,
+          "AllSpecies_AllMarkers_NoZero_NoOutliers_25Oct2023.csv")
 
 
 #####All Markers Error Structure Selection #####
@@ -366,7 +370,7 @@ Full_LMM_NoZero_BetaBN <- glmmTMB(data = All_data_NoZero_Prop_NoOutliers,
 Full_LMM_NoZero_Gamma <- glmmTMB(data = All_data_NoZero_Prop_NoOutliers, 
                                  PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
                                  na.action = na.fail,
-                                 family=Gamma,
+                                 family=Gamma(link="log"),
                                  REML=F)
 
 #add in negative binomial - can handle zeros?
@@ -408,14 +412,15 @@ testDispersion(simulateResiduals(Full_LMM_NoZero_Beta,1000))
 testDispersion(simulateResiduals(Full_LMM_NoZero_Gamma,1000))
 testDispersion(simulateResiduals(Full_LMM_NoZero_NB,1000))
 
-#AIC
-AIC(Full_LMM_NoZero_normal_iden)
-AIC(Full_LMM_NoZero_normal_log)
-AIC(Full_LMM_NoZero_normal_logit)
-AIC(Full_LMM_NoZero_Beta)
-AIC(Full_LMM_NoZero_BetaBN)
-AIC(Full_LMM_NoZero_Gamma)
-AIC(Full_LMM_NoZero_NB)
+#AICc
+AICctab(Full_LMM_NoZero_normal_iden,
+        Full_LMM_NoZero_normal_log,
+        Full_LMM_NoZero_normal_logit,
+        Full_LMM_NoZero_Beta,
+        Full_LMM_NoZero_BetaBN,
+        Full_LMM_NoZero_Gamma,
+        Full_LMM_NoZero_NB,
+        delta=T,base=T)
 
 #given the data (qq-norm, resid vs fit, AICc), move forward with Beta into variable selection
 
@@ -460,7 +465,6 @@ AICc(Random1_LMM_NoZero) #-755.9799
 AICc(Random2_LMM_NoZero)  #  -794.9804
 AICc(Random3_LMM_NoZero) # -936.4315
 
-
 #Full Model has the best AIC score
 
 #Select Fixed Effects, use AIC and DO NOT use REML
@@ -488,10 +492,9 @@ FinalModel_NoZero <- glmmTMB(data = All_data_NoZero_Prop_NoOutliers,
                              PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + (1|Run) + (1|Code),
                              na.action = na.omit,
                              family = beta_family(),
-                             REML=F)
+                             REML=T)
 plot(simulateResiduals(FinalModel_NoZero))
 summary(FinalModel_NoZero) 
-AICc(FinalModel_NoZero)# -981.4391
 Anova(FinalModel_NoZero,type="III") 
 # Analysis of Deviance Table (Type III Wald chisquare tests)
 # 
@@ -511,7 +514,6 @@ LM_finalmodel_NoZero <- lm(data = All_data_NoZero_Prop_NoOutliers,
                            PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + Run + Code)
 plot(simulateResiduals(LM_finalmodel_NoZero))
 summary(LM_finalmodel_NoZero) 
-AICc(LM_finalmodel_NoZero) #-415.281
 
 #Final model with log normal
 FinalModel_log_NoZero <- glmmTMB(data = All_data_NoZero_Prop_NoOutliers,
@@ -521,7 +523,13 @@ FinalModel_log_NoZero <- glmmTMB(data = All_data_NoZero_Prop_NoOutliers,
                                  family = gaussian(link="logit"))
 plot(simulateResiduals(FinalModel_log_NoZero))
 summary(FinalModel_log_NoZero) 
-AICc(FinalModel_log_NoZero)# -404.0389
+
+
+AICctab(FinalModel_NoZero,
+        LM_finalmodel_NoZero,
+        FinalModel_log_NoZero,
+        delta=T,base=T)
+
 
 ###plot the model
 # Extract the prediction data frame
@@ -883,7 +891,9 @@ rm(P1_NoZero_NoOut_AtlSalmon,P1_NoZero_AtlSalmon,P2_NoZero_AtlSalmon,
    P3_NoZero_NoOut_AtlSalmon,P3_NoZero_AtlSalmon,P4_NoZero_AtlSalmon,
    P5_NoZero_NoOut_AtlSalmon,P5_NoZero_AtlSalmon,P6_NoZero_AtlSalmon)
 
-
+#export data
+write.csv(AtlSalmon_data_NoZero_Prop_NoOutliers,
+          "AtlSalmon_AllMarkers_NoZero_NoOutliers_25Oct2023.csv")
 
 #####All Markers Error Structure Selection #####
 #Vars
@@ -975,13 +985,14 @@ testDispersion(simulateResiduals(AtlSalmon_Full_LMM_NoZero_Beta,1000))
 testDispersion(simulateResiduals(AtlSalmon_Full_LMM_NoZero_Gamma,1000))
 testDispersion(simulateResiduals(AtlSalmon_Full_LMM_NoZero_NB,1000))
 
-#AIC
-AIC(AtlSalmon_Full_LMM_NoZero_normal_iden)
-AIC(AtlSalmon_Full_LMM_NoZero_normal_log)
-AIC(AtlSalmon_Full_LMM_NoZero_normal_logit)
-AIC(AtlSalmon_Full_LMM_NoZero_Beta)
-AIC(AtlSalmon_Full_LMM_NoZero_Gamma)
-AIC(AtlSalmon_Full_LMM_NoZero_NB)
+#AICc
+AICctab(AtlSalmon_Full_LMM_NoZero_normal_iden,
+        AtlSalmon_Full_LMM_NoZero_normal_log,
+        AtlSalmon_Full_LMM_NoZero_normal_logit,
+        AtlSalmon_Full_LMM_NoZero_Beta,
+        AtlSalmon_Full_LMM_NoZero_Gamma,
+        AtlSalmon_Full_LMM_NoZero_NB,
+        delta=T,base=T)
 
 #given the data, move forward with Beta into variable selection
 
@@ -1059,7 +1070,6 @@ AtlSalmon_FinalModel_NoZero <- glmmTMB(data = AtlSalmon_data_NoZero_Prop_NoOutli
                              REML=T)
 plot(simulateResiduals(AtlSalmon_FinalModel_NoZero))
 summary(AtlSalmon_FinalModel_NoZero) 
-AICc(AtlSalmon_FinalModel_NoZero)# -873.96
 Anova(AtlSalmon_FinalModel_NoZero,type="III") 
 
 #plain LM to compare
@@ -1067,14 +1077,18 @@ AtlSalmon_LM_finalmodel_NoZero <- lm(data = AtlSalmon_data_NoZero_Prop_NoOutlier
                                      PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Run + Code)
 plot(simulateResiduals(AtlSalmon_LM_finalmodel_NoZero))
 summary(AtlSalmon_LM_finalmodel_NoZero) 
-AICc(AtlSalmon_LM_finalmodel_NoZero) #-451.397
 
 #Final model with log normal
 AtlSalmon_FinalModel_log_NoZero <- glmmTMB(data = AtlSalmon_data_NoZero_Prop_NoOutliers, na.action = na.omit,REML=T,family = gaussian(link="logit"),
                                  PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + (1|Run) + (1|Code))
 plot(simulateResiduals(AtlSalmon_FinalModel_log_NoZero))
 summary(AtlSalmon_FinalModel_log_NoZero) 
-AICc(AtlSalmon_FinalModel_log_NoZero)# -436.8868
+
+
+#AICc
+AICctab(AtlSalmon_FinalModel_NoZero,
+        AtlSalmon_LM_finalmodel_NoZero,
+        AtlSalmon_FinalModel_log_NoZero,delta=T,base=T)
 
 ###plot the model
 # Extract the prediction data frame
@@ -1432,7 +1446,9 @@ rm(P1_NoZero_NoOut_ArcCharr,P1_NoZero_ArcCharr,P2_NoZero_ArcCharr,
    P3_NoZero_NoOut_ArcCharr,P3_NoZero_ArcCharr,P4_NoZero_ArcCharr,
    P5_NoZero_NoOut_ArcCharr,P5_NoZero_ArcCharr,P6_NoZero_ArcCharr)
 
-
+#export data
+write.csv(ArcCharr_data_NoZero_Prop_NoOutliers,
+          "ArcticCharr_AllMarkers_NoZero_NoOutliers_25Oct2023.csv")
 
 
 #####All Markers Error Structure Selection #####
@@ -1524,13 +1540,15 @@ testDispersion(simulateResiduals(ArcCharr_Full_LMM_NoZero_Beta,1000))
 testDispersion(simulateResiduals(ArcCharr_Full_LMM_NoZero_Gamma,1000))
 testDispersion(simulateResiduals(ArcCharr_Full_LMM_NoZero_NB,1000))
 
-#AIC
-AIC(ArcCharr_Full_LMM_NoZero_normal_iden)
-AIC(ArcCharr_Full_LMM_NoZero_normal_log)
-AIC(ArcCharr_Full_LMM_NoZero_normal_logit)
-AIC(ArcCharr_Full_LMM_NoZero_Beta)
-AIC(ArcCharr_Full_LMM_NoZero_Gamma)
-AIC(ArcCharr_Full_LMM_NoZero_NB)
+
+#AICc
+AICctab(ArcCharr_Full_LMM_NoZero_normal_iden,
+        ArcCharr_Full_LMM_NoZero_normal_log,
+        ArcCharr_Full_LMM_NoZero_normal_logit,
+        ArcCharr_Full_LMM_NoZero_Beta,
+        ArcCharr_Full_LMM_NoZero_Gamma,
+        ArcCharr_Full_LMM_NoZero_NB,
+        delta=T,base=T)
 
 #given the data, move forward with Beta into variable selection
 
@@ -1606,7 +1624,6 @@ ArcCharr_FinalModel_NoZero <- glmmTMB(data = ArcCharr_data_NoZero_Prop_NoOutlier
                                       REML=T)
 plot(simulateResiduals(ArcCharr_FinalModel_NoZero)) 
 summary(ArcCharr_FinalModel_NoZero) 
-AICc(ArcCharr_FinalModel_NoZero)# -151.7665
 Anova(ArcCharr_FinalModel_NoZero,type="III") 
 
 #plain LM to compare
@@ -1614,7 +1631,6 @@ LM_Charr_finalmodel_NoZero <- lm(data = ArcCharr_data_NoZero_Prop_NoOutliers, na
                                  PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Code)
 plot(simulateResiduals(LM_Charr_finalmodel_NoZero)) 
 summary(LM_Charr_finalmodel_NoZero) 
-AICc(LM_Charr_finalmodel_NoZero) #-55.39167
 
 #Final model with log normal
 Charr_FinalModel_log_NoZero <- glmmTMB(data = ArcCharr_data_NoZero_Prop_NoOutliers,
@@ -1624,7 +1640,13 @@ Charr_FinalModel_log_NoZero <- glmmTMB(data = ArcCharr_data_NoZero_Prop_NoOutlie
                                        family = gaussian(link="logit"))
 plot(simulateResiduals(Charr_FinalModel_log_NoZero)) 
 summary(Charr_FinalModel_log_NoZero) 
-AICc(Charr_FinalModel_log_NoZero)# -27.37036
+
+
+
+#AICc
+AICctab(ArcCharr_FinalModel_NoZero,
+        LM_Charr_finalmodel_NoZero,
+        Charr_FinalModel_log_NoZero,delta=T,base=T)
 
 ###plot the model
 # Extract the prediction data frame
@@ -1673,7 +1695,7 @@ ArcCharr_FinalLModel_NoZero_plot <- ggplot(pred_lm_Charr_NoZero) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
   labs(x = "Mean Copies Per Litre Filtered",
-       y = "Prop. Total 12Steleo Reads\nPer Litre Filtered",
+       y = "Prop. Total Reads Per Litre Filtered",
        title = "LM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + qPCRRun + River") +
   # coord_cartesian(ylim=c(0, 1)) +
   theme_bw()+
@@ -1698,7 +1720,7 @@ ArcCharr_FinalLogModel_NoZero_plot <- ggplot(pred_log_Charr_NoZero) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
   labs(x = "Mean Copies Per Litre Filtered",
-       y = "Prop. Total 12Steleo Reads\nPer Litre Filtered",
+       y = "Prop. Total Reads Per Litre Filtered",
        title = "Log Normal MM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + (1|qPCRRun) + (1|River)") +
   # coord_cartesian(ylim=c(0, 1)) +
   theme_bw()+
@@ -1998,7 +2020,9 @@ rm(P1_NoZero_NoOut_PinkSalmon,P1_NoZero_PinkSalmon,P2_NoZero_PinkSalmon,
    P3_NoZero_NoOut_PinkSalmon,P3_NoZero_PinkSalmon,P4_NoZero_PinkSalmon,
    P5_NoZero_NoOut_PinkSalmon,P5_NoZero_PinkSalmon,P6_NoZero_PinkSalmon)
 
-
+#export data
+write.csv(PinkSalmon_data_NoZero_Prop_NoOutliers,
+          "PinkSalmon_AllMarkers_NoZero_NoOutliers_25Oct2023.csv")
 
 
 #####All Markers Error Structure Selection #####
@@ -2092,13 +2116,15 @@ testDispersion(simulateResiduals(PinkSalmon_Full_LMM_NoZero_Beta,1000))
 testDispersion(simulateResiduals(PinkSalmon_Full_LMM_NoZero_Gamma,1000))
 testDispersion(simulateResiduals(PinkSalmon_Full_LMM_NoZero_NB,1000))
 
-#AIC
-AICc(PinkSalmon_Full_LMM_NoZero_normal_iden)
-AICc(PinkSalmon_Full_LMM_NoZero_normal_log)
-AICc(PinkSalmon_Full_LMM_NoZero_normal_logit) #*15.39139
-AICc(PinkSalmon_Full_LMM_NoZero_Beta)#*23.59283
-AICc(PinkSalmon_Full_LMM_NoZero_Gamma)#*21.93415
-AICc(PinkSalmon_Full_LMM_NoZero_NB)
+#AICc
+AICctab(PinkSalmon_Full_LMM_NoZero_normal_iden,
+        PinkSalmon_Full_LMM_NoZero_normal_log,
+        PinkSalmon_Full_LMM_NoZero_normal_logit,
+        PinkSalmon_Full_LMM_NoZero_Beta,
+        PinkSalmon_Full_LMM_NoZero_Gamma,
+        PinkSalmon_Full_LMM_NoZero_NB,
+        delta=T,base=T)
+
 
 #logit, Beta, and Gamma all have the best AICc
 #based on residual vs fit and qqnorm, move forward with beta
@@ -2138,11 +2164,11 @@ PinkSalmon_Random3_LMM_NoZero <- glmmTMB(data = PinkSalmon_data_NoZero_Prop_NoOu
                                          family = beta_family(),
                                          REML=T)
 
-#check AICc of the models
-AICc(PinkSalmon_Full_LMM_NoZero)  #22.41733  
-AICc(PinkSalmon_Random1_LMM_NoZero) #-3.90267
-AICc(PinkSalmon_Random2_LMM_NoZero)  #  -12.58267
-AICc(PinkSalmon_Random3_LMM_NoZero) # -24.90267
+#AICc
+AICctab(PinkSalmon_Full_LMM_NoZero,
+        PinkSalmon_Random1_LMM_NoZero,
+        PinkSalmon_Random2_LMM_NoZero,
+        PinkSalmon_Random3_LMM_NoZero,delta=T,base=T)
 
 #Model3 has the best AIC score - PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result,
 
@@ -2173,7 +2199,6 @@ PinkSalmon_FinalModel_NoZero <- glmmTMB(data = PinkSalmon_data_NoZero_Prop_NoOut
                                         family = beta_family(),
                                         REML=T)
 summary(PinkSalmon_FinalModel_NoZero) 
-AICc(PinkSalmon_FinalModel_NoZero)# -57.65041
 Anova(PinkSalmon_FinalModel_NoZero,type="III")
 # Analysis of Deviance Table (Type III Wald chisquare tests)
 # 
@@ -2188,7 +2213,6 @@ Anova(PinkSalmon_FinalModel_NoZero,type="III")
 LM_PinkSalmon_finalmodel_NoZero <- lm(data = PinkSalmon_data_NoZero_Prop_NoOutliers, na.action = na.omit,
                                       PropCorrectedReadsPerLitre ~ QuantMeanPerLitre)
 summary(LM_PinkSalmon_finalmodel_NoZero) 
-AICc(LM_PinkSalmon_finalmodel_NoZero) #-41.14397
 anova(LM_PinkSalmon_finalmodel_NoZero)
 
 #Final model with log normal
@@ -2198,7 +2222,12 @@ PinkSalmon_FinalModel_log_NoZero <- glmmTMB(data = PinkSalmon_data_NoZero_Prop_N
                                             REML=T,
                                             family = gaussian(link="logit"))
 summary(PinkSalmon_FinalModel_log_NoZero) 
-AICc(PinkSalmon_FinalModel_log_NoZero)# -43.59028
+
+#AICc
+AICctab(PinkSalmon_FinalModel_NoZero,
+       LM_PinkSalmon_finalmodel_NoZero,
+       PinkSalmon_FinalModel_log_NoZero,
+       delta=T,base=T)
 
 ###plot the model
 # Extract the prediction data frame
@@ -2305,9 +2334,10 @@ ggsave(Final_Multiplot_NoZero,
 
 
 ###############Models with 0 read count included###########
+##############All Species################
 ####Data Prep####
 #Normalize data by Vol filtered
-charr_data <- charr_data_raw %>% 
+All_data <- All_data_raw %>% 
   mutate(RawReadsPerLitre = RawReads/VolFiltered,
          PropRawReadsPerLitre = RawPropReads/VolFiltered,
          CorrectedReadsPerLitre = CorrectedReads/VolFiltered,
@@ -2326,15 +2356,14 @@ charr_data <- charr_data_raw %>%
   relocate(DNAConcScale, .after = DNAConc)
 
 #subset out the important data for models
-charr_data_Model <- charr_data %>% 
+All_data_Model <- All_data %>% 
   dplyr::select("SampleID","Type","Name","Code","Date","Marker","Taxon",
                 "TotalVertReadsPerSample","RawReads","RawReadsPerLitre",
                 "RawPropReads","PropRawReadsPerLitre",
                 "CorrectedReads","CorrectedReadsPerLitre",
                 "CorrectedPropReads","PropCorrectedReadsPerLitre",
-                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
-
-
+                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result","Species") %>% 
+  filter(!is.na(QuantMeanPerLitre)) #remove any rows with an NA in QuantMeanPerLitre
 
 #picking data transformations
 # PropCorrectedReadsPerLitre vs. QuantMeanPerLitre = P1
@@ -2345,8 +2374,8 @@ charr_data_Model <- charr_data %>%
 # log10(CorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P6
 
 
-P1_base <- ggplot(charr_data_Model,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1 <- P1_base +
+P1 <- ggplot(All_data_Model,
+             aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2359,10 +2388,10 @@ P1 <- P1_base +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P1 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
-P2_base <- ggplot(charr_data_Model,aes(x=QuantMeanPerLitre,y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P2 <- P2_base +
+P2 <- ggplot(All_data_Model,
+                    aes(x=QuantMeanPerLitre,y=CorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2375,10 +2404,9 @@ P2 <- P2_base +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P2 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
-P3_base <- ggplot(charr_data_Model,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3 <- P3_base +
+P3 <- ggplot(All_data_Model,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2391,10 +2419,9 @@ P3 <- P3_base +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P3 #changes the axes, etc
+        panel.grid.major=element_blank())#changes the axes, etc
 
-P4_base <- ggplot(charr_data_Model,aes(x=log10(QuantMeanPerLitre),y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P4 <- P4_base +
+P4 <- ggplot(All_data_Model,aes(x=log10(QuantMeanPerLitre),y=CorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2407,10 +2434,9 @@ P4 <- P4_base +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P4 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
-P5_base <- ggplot(charr_data_Model,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5 <- P5_base +
+P5 <- ggplot(All_data_Model,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2423,10 +2449,9 @@ P5 <- P5_base +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P5 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
-P6_base <- ggplot(charr_data_Model,aes(x=log10(QuantMeanPerLitre),y=log10(CorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P6 <- P6_base +
+P6 <- ggplot(All_data_Model,aes(x=log10(QuantMeanPerLitre),y=log10(CorrectedReadsPerLitre),fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2439,70 +2464,76 @@ P6 <- P6_base +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P6 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
 #Save all 6 plots in 1
-Multiplot <- grid.arrange(grobs=list(P1,P2,P3,P4,P5,P6),
+Multiplot <- grid.arrange(grobs=list(P1,P2,P3,
+                                     P4,P5,P6),
                                  cols=2,
                                  top="Raw Corrected Data")
 ggsave(Multiplot,
-       file="DataVisualization_Transformations_AllMarkers_20Oct2023.pdf", 
+       file="AllSpecies_DataVisualization_Transformations_AllMarkers_25Oct2023.pdf", 
        height=20, width=15,units = "in")
 
 
 
-###remove outliers
+###remove outliers - NOTE: Data is so skewed removing outliers pulls out most if the data - not good
 #pull out just the Proportion data for modelling
-charr_data_Prop <- charr_data_Model %>%  
+All_data_Prop <- All_data_Model %>%  
   dplyr::select(!c(RawReads,RawReadsPerLitre,CorrectedReads,CorrectedReadsPerLitre))
 
+
 #Response variable - proportion of total reads
-hist(charr_data_Prop$PropCorrectedReadsPerLitre) #data is not normal, can't use z-score
-format(range(charr_data_Prop$PropCorrectedReadsPerLitre),scientific=F)
-#[1] "0.000000" "1.057051"
-boxplot(charr_data_Prop$PropCorrectedReadsPerLitre)
-summary(charr_data_Prop$PropCorrectedReadsPerLitre)
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.00000 0.00000 0.06981 0.17201 0.29245 1.05705
-IQR <- IQR(charr_data_Prop$PropCorrectedReadsPerLitre)
-quartiles <- quantile(charr_data_Prop$PropCorrectedReadsPerLitre,probs=c(.25,.75),na.rm=F)
+hist(All_data_Prop$PropCorrectedReadsPerLitre,breaks = 50) #data is not normal, can't use z-score
+format(range(All_data_Prop$PropCorrectedReadsPerLitre),scientific=F)
+# [1] "0.000000" "1.057051"
+boxplot(All_data_Prop$PropCorrectedReadsPerLitre)
+summary(All_data_Prop$PropCorrectedReadsPerLitre)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.0000  0.0000  0.1443  0.2452  0.4010  1.0571
+IQR <- IQR(All_data_Prop$PropCorrectedReadsPerLitre)
+quartiles <- quantile(All_data_Prop$PropCorrectedReadsPerLitre,probs=c(.25,.75),na.rm=F)
 Lower <- quartiles[1] - 1.5*IQR
 Upper <- quartiles[2] + 1.5*IQR
 
-charr_data_Prop_NoOutliers_Temp <- charr_data_Prop %>% 
+All_data_Prop_NoOutliers_Temp <- All_data_Prop %>%
   filter(PropCorrectedReadsPerLitre > Lower & PropCorrectedReadsPerLitre < Upper)
 rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_NoOutliers_Temp$PropCorrectedReadsPerLitre) 
-boxplot(charr_data_Prop_NoOutliers_Temp$PropCorrectedReadsPerLitre)
-#34 outliers removed
+hist(All_data_Prop_NoOutliers_Temp$PropCorrectedReadsPerLitre,breaks=50)
+boxplot(All_data_Prop_NoOutliers_Temp$PropCorrectedReadsPerLitre)
+#5 outliers removed
 
-#explanatory variable - Mean Quant score
-hist(charr_data_Prop_NoOutliers_Temp$QuantMeanPerLitre) #data is not normal, can't use z-score
-range(charr_data_Prop_NoOutliers_Temp$QuantMeanPerLitre, na.rm=T)
-# [1]     0.8941803 248.6284000
-summary(charr_data_Prop_NoOutliers_Temp$QuantMeanPerLitre)
-# Min.  1st Qu.   Median     Mean  3rd Qu.     Max.     NA's 
-#   0.8942   5.5727  10.7190  15.8518  18.2011 248.6284      270 
-boxplot(charr_data_Prop_NoOutliers_Temp$QuantMeanPerLitre)
+#explanatory variable - Mean Quant score - Data is so skewed removing outliers removes MOST of the data..don't remove outliers from MeanQuantScore
+hist(All_data_Prop_NoOutliers_Temp$QuantMeanPerLitre,breaks=50) #data is not normal, can't use z-score
+range(All_data_Prop_NoOutliers_Temp$QuantMeanPerLitre, na.rm=T)
+# [1]   0.2315217 345.7539216
+summary(All_data_Prop_NoOutliers_Temp$QuantMeanPerLitre)
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# 0.2315   3.9384   9.6377  16.6096  18.0002 345.7539
+boxplot(All_data_Prop_NoOutliers_Temp$QuantMeanPerLitre)
 
-IQR <- IQR(charr_data_Prop_NoOutliers_Temp$QuantMeanPerLitre, na.rm=T)
-quartiles <- quantile(charr_data_Prop_NoOutliers_Temp$QuantMeanPerLitre,probs=c(.25,.75),na.rm=T)
+IQR <- IQR(All_data_Prop_NoOutliers_Temp$QuantMeanPerLitre, na.rm=T)
+quartiles <- quantile(All_data_Prop_NoOutliers_Temp$QuantMeanPerLitre,probs=c(.25,.75),na.rm=T)
 Lower <- quartiles[1] - 1.5*IQR
 Upper <- quartiles[2] + 1.5*IQR
 
-charr_data_Prop_NoOutliers <- charr_data_Prop_NoOutliers_Temp %>% 
+All_data_Prop_NoOutliers <- All_data_Prop_NoOutliers_Temp %>%
   filter(QuantMeanPerLitre > Lower & QuantMeanPerLitre < Upper)
 rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_NoOutliers$QuantMeanPerLitre) 
-boxplot(charr_data_Prop_NoOutliers$QuantMeanPerLitre)
-rm(charr_data_Prop_NoOutliers_Temp)
-#316 outliers removed
+hist(All_data_Prop_NoOutliers$QuantMeanPerLitre,breaks=50)
+boxplot(All_data_Prop_NoOutliers$QuantMeanPerLitre)
+rm(All_data_Prop_NoOutliers_Temp)
+# 71 outliers removed
+
+#remove proportions greater than 1
+format(range(All_data_Prop_NoOutliers$PropCorrectedReadsPerLitre),scientific=F)
+All_data_Prop_NoOutliers <- All_data_Prop_NoOutliers %>% 
+  filter(PropCorrectedReadsPerLitre < 1) #removed 6 rows
 
 
 #redo plots with no outliers
-
-P1_base_NoOut <- ggplot(charr_data_Prop_NoOutliers,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_NoOut <- P1_base_NoOut +
+P1_NoOutliers <- ggplot(All_data_Prop_NoOutliers,
+                          aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2515,10 +2546,10 @@ P1_NoOut <- P1_base_NoOut +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P1 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
-P3_base_NoOut <- ggplot(charr_data_Prop_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_NoOut <- P3_base_NoOut +
+P3_NoOutliers <- ggplot(All_data_Prop_NoOutliers,
+                          aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2531,10 +2562,10 @@ P3_NoOut <- P3_base_NoOut +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P3 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
-P5_base_NoOut <- ggplot(charr_data_Prop_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_NoOut <- P5_base_NoOut +
+P5_NoOutliers <- ggplot(All_data_Prop_NoOutliers,
+                          aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker)) +
   geom_point(alpha=0.7) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
@@ -2547,21 +2578,28 @@ P5_NoOut <- P5_base_NoOut +
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());P5 #changes the axes, etc
+        panel.grid.major=element_blank()) #changes the axes, etc
 
 
 
 #Save all 6 plots in 1 (multiplot function from online)
-Multiplot_NoOut <- grid.arrange(grobs=list(P1_NoOut,P1,P2,P3_NoOut,P3,P4,P5_NoOut,P5,P6),
-                                       cols=2,
-                                       top="No Outliers")
-ggsave(Multiplot_NoOut,
-       file="DataVisualization_Transformations_AllMarkers_NoOutliers_20Oct2023.pdf", 
+Multiplot_NoOutliers <- grid.arrange(grobs=list(P1_NoOutliers,P1,P2,
+                                           P3_NoOutliers,P3,P4,
+                                           P5_NoOutliers,P5,P6),
+                                       cols=3)
+ggsave(Multiplot_NoOutliers,
+       file="AllSpecies_DataVisualization_Transformations_AllMarkers_NoOutliers_25Oct2023.pdf", 
        height=20, width=25,units = "in")
 
 
+#remove the plots once saved
+rm(P1_NoOutliers,P1,P2,
+   P3_NoOutliers,P3,P4,
+   P5_NoOutliers,P5,P6)
 
-
+#export data
+write.csv(All_data_Prop_NoOutliers,
+          "AllSpecies_AllMarkers_NoOutliers_25Oct2023.csv")
 
 #####All Markers Error Structure Selection #####
 #Vars
@@ -2573,118 +2611,128 @@ ggsave(Multiplot_NoOut,
 # DNA Conc = Random (Control for effect of DNA concentration) #Continuous var CANNOT be random, MUST be fixed
 # Marker = Fixed
 
-#need to pick out the zero inflated structure
-#what could influence it?
-#DNAConcentration
-#qPCR Result
-
-
+All_data_Prop_NoOutliers
 
 #picking error structure
 #hist of response variable
-hist(charr_data_Prop_NoOutliers$PropCorrectedReadsPerLitre) 
-format(range(charr_data_Prop_NoOutliers$PropCorrectedReadsPerLitre),scientific=F) #[1] "0.000000" "0.724433"
-var(charr_data_Prop_NoOutliers$PropCorrectedReadsPerLitre)# [1] 0.03643173
-mean(charr_data_Prop_NoOutliers$PropCorrectedReadsPerLitre)# [1] 0.1840403
+hist(All_data_Prop_NoOutliers$PropCorrectedReadsPerLitre,breaks=50) 
+format(range(All_data_Prop_NoOutliers$PropCorrectedReadsPerLitre),scientific=F) #[1] "0.0000" "0.9999"
+var(All_data_Prop_NoOutliers$PropCorrectedReadsPerLitre)# [1] 0.06722745
+mean(All_data_Prop_NoOutliers$PropCorrectedReadsPerLitre)# [1] 0.2207186
 
-descdist(charr_data_Prop_NoOutliers$PropCorrectedReadsPerLitre, boot=10000,method="sample") #likely closest to normal or beta dist
+descdist(All_data_Prop_NoOutliers$PropCorrectedReadsPerLitre, boot=500) #likely closest to normal or beta dist
 
 #Normal error distribution
-Full_LMM_normal_iden <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                                PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                                na.action = na.omit,
-                                family =gaussian, #linear
-                                REML=T,ziformula=~Result)
-Full_LMM_normal_log <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                               PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                               na.action = na.omit,
-                               family =gaussian(link="log"), #logarithmic?
-                               REML=T,start=0,ziformula=~Result)
-Full_LMM_normal_logit <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                                 PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                                 na.action = na.omit,
-                                 family =gaussian(link="logit"), #logarithmic?
-                                 REML=T,ziformula=~Result)
-Full_LMM_FracLogistic <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                                 PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                                 na.action = na.omit,
-                                 family =binomial(link="logit"), #logistic regression
-                                 REML=T,ziformula=~Result)
-
+Full_Zero_LMM_normal_iden <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                                       PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                                       na.action = na.omit,
+                                       family =gaussian, #linear
+                                       REML=F)
+Full_Zero_LMM_normal_log <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                                      PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                                      na.action = na.omit,
+                                      family =gaussian(link="log"), #logarithmic?
+                                      REML=F, start=0)
+Full_Zero_LMM_normal_logit <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                                        PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                                        na.action = na.omit,
+                                        family =gaussian(link="logit"), #logarithmic?
+                                        REML=F)
 #we have a bounded outcome in that the response variable is a proportion
 #redo the Full model with different error structures, then compare with diagnostic plots
 
+#Beta distribution was the most appropriate for the data with the zeros removed, but cannot handle zeros in the data
+#a zero inflation model can be run, but what defines the 0?
+
 #beta - fall between 0 and 1 (proportion!) 
-Full_LMM_Beta <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                         PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                         na.action = na.omit,REML=T,
-                         family = beta_family(),#default logit
-                         ziformula=~Result) #this should allow for 0 values in the beta model, related to DNA concentration
+Full_Zero_LMM_Beta1 <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                               PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                               na.action = na.omit,
+                               family = beta_family(),#default logit
+                               REML=F,
+                               ziformula = ~1)  #ziformula=~1 means probability of structural zero is the same for all obs
+Full_Zero_LMM_Beta2 <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                               PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                               na.action = na.omit,
+                               family = beta_family(),#default logit
+                               REML=F,
+                               ziformula = ~Result) # probability of structural zero varies by Result
+Full_Zero_LMM_Beta3 <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                               PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                               na.action = na.omit,
+                               family = beta_family(),#default logit
+                               REML=F,
+                               ziformula = ~DNAConcScale) # probability of structural zero varies by DNAConcScale
+Full_Zero_LMM_Beta4 <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                               PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                               na.action = na.omit,
+                               family = beta_family(),#default logit
+                               REML=F,
+                               ziformula = ~.) # probability of structural zero is the same as the main formula
 
-#add in negative binomial - can handle zeros?
-Full_LMM_NB <- glmer.nb(data = charr_data_Prop_NoOutliers,
-                        PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                        na.action = na.omit)
+#hurdle NB from glmmTMB
+Full_Zero_LMM_NB <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                            PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                            na.action = na.omit,
+                            family = truncated_nbinom1(link="log"),
+                            REML=F,
+                            ziformula = ~.) 
 
-AICc(Full_LMM_normal_iden)
-AICc(Full_LMM_normal_log)
-AICc(Full_LMM_normal_logit)
-AICc(Full_LMM_FracLogistic)
-AICc(Full_LMM_Beta)
-AICc(Full_LMM_NB)
 
 #Model comparisons
-#zero-inflation
-testZeroInflation(simulateResiduals(Full_LMM_normal_iden)) 
-testZeroInflation(simulateResiduals(Full_LMM_normal_log)) 
-testZeroInflation(simulateResiduals(Full_LMM_normal_logit)) 
-testZeroInflation(simulateResiduals(Full_LMM_FracLogistic))
-testZeroInflation(simulateResiduals(Full_LMM_Beta)) #not zero inflated
-testZeroInflation(simulateResiduals(Full_LMM_NB)) 
+#Plots - qqnorm, DHARMa
+plot(simulateResiduals(Full_Zero_LMM_normal_iden)) #bad
+plot(simulateResiduals(Full_Zero_LMM_normal_log)) #bad
+plot(simulateResiduals(Full_Zero_LMM_normal_logit)) #bad
+plot(simulateResiduals(Full_Zero_LMM_Beta1),main="beta1") #bad
+plot(simulateResiduals(Full_Zero_LMM_Beta2),main="beta2") #bad
+plot(simulateResiduals(Full_Zero_LMM_Beta3),main="beta3") #bad
+plot(simulateResiduals(Full_Zero_LMM_Beta4),main="beta4") #pretty good!
+plot(simulateResiduals(Full_Zero_LMM_NB))  #very bad
 
-#Plots - res vs fit and qqnorm
-plot(simulateResiduals(Full_LMM_normal_iden))
-  plot(x=fitted(Full_LMM_normal_iden),y=residuals(Full_LMM_normal_iden))
-
-plot(simulateResiduals(Full_LMM_normal_log))
-  plot(x=fitted(Full_LMM_normal_log),y=residuals(Full_LMM_normal_log))
-
-plot(simulateResiduals(Full_LMM_normal_logit))
-  plot(x=fitted(Full_LMM_normal_logit),y=residuals(Full_LMM_normal_logit))
-
-plot(simulateResiduals(Full_LMM_FracLogistic))
-  plot(x=fitted(Full_LMM_normal_logit),y=residuals(Full_LMM_FracLogistic))  
-  
-plot(simulateResiduals(Full_LMM_Beta))
-  plot(x=fitted(Full_LMM_Beta),y=residuals(Full_LMM_Beta))
-
-plot(simulateResiduals(Full_LMM_NB)) 
-  plot(x=fitted(Full_LMM_NB),y=residuals(Full_LMM_NB))
-
-
+#res vs fit
+plot(x=fitted(Full_Zero_LMM_normal_iden),y=residuals(Full_Zero_LMM_normal_iden))
+plot(x=fitted(Full_Zero_LMM_normal_log),y=residuals(Full_Zero_LMM_normal_log))
+plot(x=fitted(Full_Zero_LMM_normal_logit),y=residuals(Full_Zero_LMM_normal_logit))
+plot(x=fitted(Full_Zero_LMM_Beta1),y=residuals(Full_Zero_LMM_Beta1))
+plot(x=fitted(Full_Zero_LMM_Beta2),y=residuals(Full_Zero_LMM_Beta2))
+plot(x=fitted(Full_Zero_LMM_Beta3),y=residuals(Full_Zero_LMM_Beta3))
+plot(x=fitted(Full_Zero_LMM_Beta4),y=residuals(Full_Zero_LMM_Beta4))
+plot(x=fitted(Full_Zero_LMM_NB),y=residuals(Full_Zero_LMM_NB))
 
 #histogram of residuals
-hist(residuals(Full_LMM_normal_iden),main="Normal")
-hist(residuals(Full_LMM_normal_log),main="Normal w/log")
-hist(residuals(Full_LMM_normal_logit),main="Normal w/logit")
-hist(residuals(Full_LMM_Beta),main="Beta")
-hist(residuals(Full_LMM_NB),main="NB")
+hist(residuals(Full_Zero_LMM_normal_iden),main="Normal")
+hist(residuals(Full_Zero_LMM_normal_log),main="Normal w/log")
+hist(residuals(Full_Zero_LMM_normal_logit),main="Normal w/logit")
+hist(residuals(Full_Zero_LMM_Beta1),main="Beta1")
+hist(residuals(Full_Zero_LMM_Beta2),main="Beta2")
+hist(residuals(Full_Zero_LMM_Beta3),main="Beta3")
+hist(residuals(Full_Zero_LMM_Beta4),main="Beta4")
+hist(residuals(Full_Zero_LMM_NB),main="NB")
 
 #test dispersion
-testDispersion(simulateResiduals(Full_LMM_normal_iden,1000))
-testDispersion(simulateResiduals(Full_LMM_normal_log,1000))
-testDispersion(simulateResiduals(Full_LMM_normal_logit,1000))
-testDispersion(simulateResiduals(Full_LMM_Beta,1000))
-testDispersion(simulateResiduals(Full_LMM_NB,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_normal_iden,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_normal_log,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_normal_logit,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_Beta1,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_Beta2,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_Beta3,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_Beta4,1000))
+testDispersion(simulateResiduals(Full_Zero_LMM_NB,1000))
 
 #AIC
-AICc(Full_LMM_normal_iden) #-673.9683
-AICc(Full_LMM_normal_log) #-714.926
-AICc(Full_LMM_normal_logit) #-738.398
-AICc(Full_LMM_Beta) # -17.4758
-AICc(Full_LMM_NB) #704.0931
+AICctab(Full_Zero_LMM_normal_iden,
+       Full_Zero_LMM_normal_log,
+       Full_Zero_LMM_normal_logit,
+       Full_Zero_LMM_Beta1,
+       Full_Zero_LMM_Beta2,
+       Full_Zero_LMM_Beta3,
+       Full_Zero_LMM_Beta4,
+       Full_Zero_LMM_NB,
+       delta=T,base=T)
 
-#given the data, move forward with logit into variable selection
+
+#given the data (qq-norm, resid vs fit, AICc), move forward with Beta4 into variable selection - the normal dist, while having good AIC, have very bad qqnorm, etc
 
 
 #####All Markers Variable Selection#####
@@ -2696,1003 +2744,204 @@ AICc(Full_LMM_NB) #704.0931
 # 4. once you arrive at the final model present it using REML estimation
 
 #full model
-Full_LMM <-  glmmTMB(data = charr_data_Prop_NoOutliers, 
-                     PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                     na.action = na.omit,
-                     REML=T,
-                     family = beta_family(),#default logit
-                     ziformula=~DNAConcScale)
-summary(Full_LMM)
-AICc(Full_LMM) #-17.4758
+Full_LMM_Zero <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                         PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                         na.action = na.omit,
+                         family = beta_family(),#default logit
+                         REML=T,
+                         ziformula = ~.) 
+summary(Full_LMM_Zero)
 
 #sort out random using AIC
-Random1_LMM <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                       PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run),
-                       na.action = na.omit,
-                       REML=T,
-                       family = beta_family(),#default logit
-                       ziformula=~DNAConcScale)
-Random2_LMM <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                       PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Code),
-                       na.action = na.omit,
-                       REML=T,
-                       family = beta_family(),#default logit
-                       ziformula=~DNAConcScale)
-Random3_LMM <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                       PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result,
-                       na.action = na.omit,
-                       REML=T,
-                       family = beta_family(),#default logit
-                       ziformula=~DNAConcScale)
+Random1_LMM_Zero <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                            PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run),
+                            na.action = na.omit,
+                            family = beta_family(),#default logit
+                            REML=T,
+                            ziformula = ~.)
+Random2_LMM_Zero <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                            PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Code),
+                            na.action = na.omit,
+                            family = beta_family(),#default logit
+                            REML=T,
+                            ziformula = ~.)
+Random3_LMM_Zero <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                            PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale,
+                            na.action = na.omit,
+                            family = beta_family(),#default logit
+                            REML=T,
+                            ziformula = ~.)
 
-#check AICc of the models
-AICc(Full_LMM)  #-45.19681  
-AICc(Random1_LMM) #92.55073
-AICc(Random2_LMM)  #  -92.55073
-AICc(Random3_LMM) # -5.395436
+#AICc
+AICctab(Full_LMM_Zero,
+       Random1_LMM_Zero,
+       Random2_LMM_Zero,
+       Random3_LMM_Zero,
+       delta=T, base=T) 
 
 #Full Model has the best AIC score
 
 #Select Fixed Effects, use AIC and DO NOT use REML
-Full_LMM_Fixed <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                          PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + DNAConcScale + Type + Result + (1|Run) + (1|Code),
-                          na.action = na.fail,
-                          REML=F,
-                          family = beta_family(),#default logit
-                          ziformula=~DNAConcScale)
-AICc(Full_LMM_Fixed) #-45.19681
+Full_LMM_Zero_Fixed <-  glmmTMB(data = All_data_Prop_NoOutliers, 
+                                PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Type + Result + Species + DNAConcScale + (1|Run) + (1|Code),
+                                na.action = na.fail,
+                                family = beta_family(),#default logit
+                                REML=F,
+                                ziformula = ~.)
+AIC(Full_LMM_Zero_Fixed) #-22.07563
 
 #use dredge to run all possible sub-models
-Dredge_Full_LMM_Fixed <- dredge(Full_LMM_Fixed)
-print(Dredge_Full_LMM_Fixed)
+Dredge_Full_LMM_Zero_Fixed <- dredge(Full_LMM_Zero_Fixed)
+print(Dredge_Full_LMM_Zero_Fixed)
 # Model selection table 
-#     cnd((Int)) zi((Int)) dsp((Int)) cnd(DNA) cnd(Mrk) cnd(QMP) cnd(Rsl) cnd(Typ) zi(DNA) df logLik  AICc delta weight
-# 47     -1.763    -1.114          +                 +  0.03786        +          -0.2143 12 37.516 -50.6  0.00  0.273
-# 48     -1.790    -1.114          + -0.08367        +  0.04035        +          -0.2143 13 38.474 -50.5  0.15  0.253
-# 45     -1.854    -1.114          +                    0.03815        +          -0.2143 10 34.629 -49.0  1.66  0.119
-# 46     -1.880    -1.114          + -0.08585           0.04070        +          -0.2143 11 35.647 -49.0  1.68  0.118
+#       cnd((Int)) zi((Int)) dsp((Int)) cnd(DNA) cnd(Mrk) cnd(QMP) cnd(Rsl) cnd(Spc) cnd(Typ)   zi(DNA) zi(Mrk) zi(QMP) zi(Rsl) zi(Spc) zi(Typ) df   logLik  AICc  delta weight
+# 1950    -0.9217  -2.24700          + -0.24610           0.05270        +        +                          + -0.1143       +       +         22   39.585 -34.2   0.00  0.303
+# 2014    -0.9217  -2.19000          + -0.24610           0.05270        +        +           0.130700       + -0.1183       +       +         23   40.220 -33.4   0.82  0.201
+# 1952    -0.8125  -2.24700          + -0.24510        +  0.05255        +        +                          + -0.1143       +       +         24   40.880 -32.6   1.59  0.137
 
-#Top model is PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Result + (1|Run) + (1|Code)
-
+#Top 3 models are basically equivalent, based on deltaAIC (<2)
+#Main: QuantMeanPerLitre + DNAConcScale + Result + Species + (1|Run) + (1|Code)
+#ZI: Marker + QuantMeanPerLitre + Result + Species
 
 ##### AllMarkers Final model#####
-FinalModel <- glmmTMB(data = charr_data_Prop_NoOutliers, 
-                      PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Result + (1|Run) + (1|Code),
-                      na.action = na.omit,
-                      REML=T,
-                      family = beta_family(),#default logit
-                      ziformula=~DNAConcScale)
-summary(FinalModel) 
-AICc(FinalModel)# -31.68266
-Anova(FinalModel,type="III") 
+FinalModel_Zero <- glmmTMB(data = All_data_Prop_NoOutliers, 
+                           PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + (1|Run) + (1|Code),
+                           na.action = na.fail,
+                           family = beta_family(),#default logit
+                           REML=T,
+                           ziformula = ~ QuantMeanPerLitre + Marker + Result + Species)
+plot(simulateResiduals(FinalModel_Zero))
+summary(FinalModel_Zero) 
+Anova(FinalModel_Zero,type="III") 
+# Analysis of Deviance Table (Type III Wald chisquare tests)
+# 
+# Response: PropCorrectedReadsPerLitre
+#                       Chisq Df Pr(>Chisq)    
+#   (Intercept)       20.351  1  6.446e-06 ***
+#   QuantMeanPerLitre 80.576  1  < 2.2e-16 ***
+#   DNAConcScale      13.528  1  0.0002351 ***
+#   Result            25.703  3  1.101e-05 ***
+#   Species           13.197  2  0.0013622 ** 
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#plain LM to compare
+LM_finalmodel_Zero <- lm(data = All_data_Prop_NoOutliers, 
+                         na.action = na.omit,
+                         PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + Run + Code)
+plot(simulateResiduals(LM_finalmodel_Zero))
+summary(LM_finalmodel_Zero) 
+
+#Final model with log normal
+FinalModel_log_Zero <- glmmTMB(data = All_data_Prop_NoOutliers,
+                               PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + (1|Run) + (1|Code),
+                               na.action = na.omit,
+                               REML=T,
+                               family = gaussian(link="logit"))
+plot(simulateResiduals(FinalModel_log_Zero))
+summary(FinalModel_log_Zero) 
+
+
+AICctab(FinalModel_Zero,
+        LM_finalmodel_Zero,
+        FinalModel_log_Zero,
+        delta=T,base=T)
 
 ###plot the model
 # Extract the prediction data frame
-pred_mm <- ggpredict(FinalModel, terms = c("QuantMeanPerLitre"))  # this gives overall predictions for the model
+pred_mm_Zero <- ggpredict(FinalModel_Zero, terms = c("QuantMeanPerLitre"))  # this gives overall predictions for the model
+pred_lm_Zero <- ggpredict(LM_finalmodel_Zero, terms = c("QuantMeanPerLitre"))
+pred_log_Zero <- ggpredict(FinalModel_log_Zero, terms = c("QuantMeanPerLitre"))
 
 
 # Plot the predictions 
-FinalModel_plot <- ggplot(pred_mm) + 
-  geom_line(data = pred_mm, colour="black", 
+FinalModel_Zero_plot <- ggplot(pred_mm_Zero) + 
+  geom_line(data = pred_mm_Zero, colour="black", 
             aes(x = x, y = predicted)) +          # slope
-  geom_ribbon(data = pred_mm,
+  geom_ribbon(data = pred_mm_Zero,
               aes(x = x,
                   ymin = predicted - std.error,
                   ymax = predicted + std.error),
               fill = "grey", alpha = 0.5) +  # error band
-  geom_point(data = charr_data_Prop_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
+  geom_point(data = All_data_Prop_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
              aes(x = QuantMeanPerLitre, y = PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
   scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
   scale_shape_manual(values=c(21,22,23))+
   labs(x = "Mean Copies Per Litre Filtered",
        y = "Prop. Total Reads Per Litre Filtered",
-       title = "Beta GLMM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + Marker + Result + (1|qPCRRun) + (1|River)") +
-  # coord_cartesian(ylim=c(0, 1)) +
+       title = "All Species Beta GLMM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + (1|qPCRRun) + (1|River)") +
   theme_bw()+
   theme(legend.position = "right", 
         axis.text = element_text(size = 20), 
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank());FinalModel_plot
+        panel.grid.major=element_blank());FinalModel_Zero_plot
 
-
-
-#export plots
-ggsave(FinalModel_plot, #plot you want to save
-       file = "AtlanticSalmon_AllMarkers_GLMMBeta_20Oct2023.pdf", #filename to save the plot as
-       height = 10, #height of the plot file
-       width = 16,  #width of the plot file
-       units = "in") #units of the height and width
-
-
-
-########## 12S Data plots and Outlier Removal##########
-#picking data transformations
-# PropCorrectedReadsPerLitre vs. QuantMeanPerLitre = P1
-# CorrectedReadsPerLitre vs. QuantMeanPerLitre = P2
-# PropCorrectedReadsPerLitre vs. log10(QuantMeanPerLitre) = P3
-# CorrectedReadsPerLitre vs. log10(QuantMeanPerLitre) = P4
-# log10(PropCorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P5
-# log10(CorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P6
-
-charr_data_Model_12S <- charr_data_Model %>% 
-  filter(charr_data_Model$Marker == "12Steleo")
-
-P1_base_12S <- ggplot(charr_data_Model_12S,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_12S <- P1_base_12S +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Prop. Total Reads Per Litre Filtered",
-       title="P1")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P2_base_12S <- ggplot(charr_data_Model_12S,aes(x=QuantMeanPerLitre,y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P2_12S <- P2_base_12S +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Corrected Reads Per Litre Filtered",
-       title="P2")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P3_base_12S <- ggplot(charr_data_Model_12S,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_12S <- P3_base_12S +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Prop. Total Reads Per Litre Filtered",
-       title="P3") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P4_base_12S <- ggplot(charr_data_Model_12S,aes(x=log10(QuantMeanPerLitre),y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P4_12S <- P4_base_12S +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Corrected Reads Per Litre Filtered",
-       title="P4") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P5_base_12S <- ggplot(charr_data_Model_12S,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_12S <- P5_base_12S +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Prop. Total Reads)", paste("Per Litre Filtered"))),
-       title="P5") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P6_base_12S <- ggplot(charr_data_Model_12S,aes(x=log10(QuantMeanPerLitre),y=log10(CorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P6_12S <- P6_base_12S +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Corrected Reads)", paste("Per Litre Filtered"))),
-       title="P6") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-#Save all 6 plots in 1
-Multiplot_12S <- grid.arrange(grobs=list(P1_12S,P2_12S,P3_12S,P4_12S,P5_12S,P6_12S),
-                                     cols=2,
-                                     top="Raw Data 12S")
-ggsave(Multiplot_12S,
-       file="DataVisualization_Transformations_12S_20Oct2023.pdf", 
-       height=20, width=15,units = "in")
-
-
-
-###remove outliers
-
-#pull out just the Proportion data for modelling
-charr_data_Prop_12S <- charr_data_Model_12S %>%  
-  dplyr::select(!c(RawReads,RawReadsPerLitre,CorrectedReads,CorrectedReadsPerLitre))
-
-#Response variable - proportion of total reads
-hist(charr_data_Prop_12S$PropCorrectedReadsPerLitre) #data is not normal, can't use z-score
-format(range(charr_data_Prop_12S$PropCorrectedReadsPerLitre),scientific=F)
-# [1] "0.0000009154" "1.0570512821"
-boxplot(charr_data_Prop_12S$PropCorrectedReadsPerLitre)
-summary(charr_data_Prop_12S$PropCorrectedReadsPerLitre)
-# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-# 0.0000009 0.0822997 0.2373737 0.2782800 0.4242000 1.0570513 
-IQR <- IQR(charr_data_Prop_12S$PropCorrectedReadsPerLitre)
-quartiles <- quantile(charr_data_Prop_12S$PropCorrectedReadsPerLitre,probs=c(.25,.75),na.rm=F)
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR
-
-charr_data_Prop_12S_NoOutliers_Temp <- charr_data_Prop_12S %>% 
-  filter(PropCorrectedReadsPerLitre > Lower & PropCorrectedReadsPerLitre < Upper)
-rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_12S_NoOutliers_Temp$PropCorrectedReadsPerLitre) 
-boxplot(charr_data_Prop_12S_NoOutliers_Temp$PropCorrectedReadsPerLitre)
-#2 outliers removed
-
-#explanatory variable - Mean Quant score
-hist(charr_data_Prop_12S_NoOutliers_Temp$QuantMeanPerLitre) #data is not normal, can't use z-score
-range(charr_data_Prop_12S_NoOutliers_Temp$QuantMeanPerLitre,na.rm=T)
-# [1]   1.441469 248.628400
-summary(charr_data_Prop_12S_NoOutliers_Temp$QuantMeanPerLitre)
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#   1.441   7.564  12.400  17.991  20.885 248.628      28
-boxplot(charr_data_Prop_12S_NoOutliers_Temp$QuantMeanPerLitre)
-
-IQR <- IQR(charr_data_Prop_12S_NoOutliers_Temp$QuantMeanPerLitre,na.rm=T)
-quartiles <- quantile(charr_data_Prop_12S_NoOutliers_Temp$QuantMeanPerLitre,probs=c(.25,.75),na.rm=T)
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR
-
-charr_data_Prop_12S_NoOutliers <- charr_data_Prop_12S_NoOutliers_Temp %>% 
-  filter(QuantMeanPerLitre > Lower & QuantMeanPerLitre < Upper)
-rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_12S_NoOutliers$QuantMeanPerLitre) 
-boxplot(charr_data_Prop_12S_NoOutliers$QuantMeanPerLitre)
-rm(charr_data_Prop_12S_NoOutliers_Temp)
-#43 outliers removed
-
-
-#redo plots with no outliers
-
-P1_base_12S_NoOut <- ggplot(charr_data_Prop_12S_NoOutliers,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_12S_NoOut <- P1_base_12S_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Prop. Total Reads Per Litre Filtered",
-       title="P1 No Outliers")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P3_base_12S_NoOut <- ggplot(charr_data_Prop_12S_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_12S_NoOut <- P3_base_12S_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Prop. Total Reads Per Litre Filtered",
-       title="P3 No Outliers") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P5_base_12S_NoOut <- ggplot(charr_data_Prop_12S_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_12S_NoOut <- P5_base_12S_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Prop. Total Reads)", paste("Per Litre Filtered"))),
-       title="P5 No Outliers") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-
-
-#Save all 6 plots in 1 (multiplot function from online)
-Multiplot_12S_NoOut <- grid.arrange(grobs=list(P1_12S_NoOut,P1_12S,P2_12S,
-                                                      P3_12S_NoOut,P3_12S,P4_12S,
-                                                      P5_12S_NoOut,P5_12S,P6_12S),
-                                           cols=3,
-                                           top="No Outliers 12S")
-ggsave(Multiplot_12S_NoOut,
-       file="DataVisualization_Transformations_12S_NoOutliers_20Oct2023.pdf", 
-       height=20, width=25,units = "in")
-
-
-
-
-
-######### 12S Final model ##########
-FinalModel_12S <- glmmTMB(data = charr_data_Prop_12S_NoOutliers, 
-                                 na.action = na.omit,family = beta_family(),REML=T,
-                                 PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|Run) + (1|Code))
-summary(FinalModel_12S) 
-AICc(FinalModel_12S)# -314.5019
-Anova(FinalModel_12S)
-
-###plot the model
-# Extract the prediction data frame
-pred.mm_12S <- ggpredict(FinalModel_12S, terms = c("QuantMeanPerLitre"))  # this gives overall predictions for the model
-
-# Plot the predictions 
-FinalModel_12S_plot <- ggplot(pred.mm_12S) + 
-  geom_line(data = pred.mm_12S, colour="black", 
+FinalLModel_Zero_plot <- ggplot(pred_lm_Zero) + 
+  geom_line(data = pred_lm_Zero, colour="black", 
             aes(x = x, y = predicted)) +          # slope
-  geom_ribbon(data = pred.mm_12S,
+  geom_ribbon(data = pred_lm_Zero,
               aes(x = x,
                   ymin = predicted - std.error,
                   ymax = predicted + std.error),
               fill = "grey", alpha = 0.5) +  # error band
-  geom_point(data = charr_data_Prop_12S_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
+  geom_point(data = All_data_Prop_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
              aes(x = QuantMeanPerLitre, y = PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
-  scale_fill_manual(values=c("#1B9E77"))+
-  scale_shape_manual(values=c(21))+
+  scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
+  scale_shape_manual(values=c(21,22,23))+
   labs(x = "Mean Copies Per Litre Filtered",
        y = "Prop. Total Reads Per Litre Filtered",
-       title = "Beta GLMM 12S\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|qPCRRun) + (1|River)") +
+       title = "LM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + Run + River") +
   theme_bw()+
   theme(legend.position = "right", 
         axis.text = element_text(size = 20), 
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank())
+        panel.grid.major=element_blank());FinalLModel_Zero_plot
 
-
-#export plots
-ggsave(FinalModel_12S_plot, #plot you want to save
-       file = "AtlanticSalmon_12S_GLMMBeta_20Oct2023.pdf", #filename to save the plot as
-       height = 10, #height of the plot file
-       width = 16,  #width of the plot file
-       units = "in") #units of the height and width
-
-
-########## FISHE Data plots and Outlier Removal##########
-#picking data transformations
-# PropCorrectedReadsPerLitre vs. QuantMeanPerLitre = P1
-# CorrectedReadsPerLitre vs. QuantMeanPerLitre = P2
-# PropCorrectedReadsPerLitre vs. log10(QuantMeanPerLitre) = P3
-# CorrectedReadsPerLitre vs. log10(QuantMeanPerLitre) = P4
-# log10(PropCorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P5
-# log10(CorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P6
-
-charr_data_Model_FISHE <- charr_data_Model %>% 
-  filter(charr_data_Model$Marker == "FISHE")
-
-P1_base_FISHE <- ggplot(charr_data_Model_FISHE,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_FISHE <- P1_base_FISHE +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Prop. Total Reads Per Litre Filtered",
-       title="P1")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P2_base_FISHE <- ggplot(charr_data_Model_FISHE,aes(x=QuantMeanPerLitre,y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P2_FISHE <- P2_base_FISHE +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Corrected Reads Per Litre Filtered",
-       title="P2")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P3_base_FISHE <- ggplot(charr_data_Model_FISHE,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_FISHE <- P3_base_FISHE +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Prop. Total Reads Per Litre Filtered",
-       title="P3") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P4_base_FISHE <- ggplot(charr_data_Model_FISHE,aes(x=log10(QuantMeanPerLitre),y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P4_FISHE <- P4_base_FISHE +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Corrected Reads Per Litre Filtered",
-       title="P4") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P5_base_FISHE <- ggplot(charr_data_Model_FISHE,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_FISHE <- P5_base_FISHE +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Prop. Total Reads)", paste("Per Litre Filtered"))),
-       title="P5") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P6_base_FISHE <- ggplot(charr_data_Model_FISHE,aes(x=log10(QuantMeanPerLitre),y=log10(CorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P6_FISHE <- P6_base_FISHE +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Corrected Reads)", paste("Per Litre Filtered"))),
-       title="P6") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-#Save all 6 plots in 1
-Multiplot_FISHE <- grid.arrange(grobs=list(P1_FISHE,P2_FISHE,P3_FISHE,P4_FISHE,P5_FISHE,P6_FISHE),
-                                       cols=2,
-                                       top="Raw Data FISHE")
-ggsave(Multiplot_FISHE,
-       file="DataVisualization_Transformations_FISHE_20Oct2023.pdf", 
-       height=20, width=15,units = "in")
-
-
-
-###remove outliers
-
-#pull out just the Proportion data for modelling
-charr_data_Prop_FISHE <- charr_data_Model_FISHE %>%  
-  dplyr::select(!c(RawReads,RawReadsPerLitre,CorrectedReads,CorrectedReadsPerLitre))
-
-#Response variable - proportion of total reads
-hist(charr_data_Prop_FISHE$PropCorrectedReadsPerLitre) #data is not normal, can't use z-score
-format(range(charr_data_Prop_FISHE$PropCorrectedReadsPerLitre),scientific=F)
-# [1] "0.005157143" "0.769381443"
-boxplot(charr_data_Prop_FISHE$PropCorrectedReadsPerLitre)
-summary(charr_data_Prop_FISHE$PropCorrectedReadsPerLitre)
-# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-# 0.005157 0.096598 0.201000 0.260374 0.389711 0.769381 
-IQR <- IQR(charr_data_Prop_FISHE$PropCorrectedReadsPerLitre)
-quartiles <- quantile(charr_data_Prop_FISHE$PropCorrectedReadsPerLitre,probs=c(.25,.75),na.rm=F)
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR
-
-charr_data_Prop_FISHE_NoOutliers_Temp <- charr_data_Prop_FISHE %>% 
-  filter(PropCorrectedReadsPerLitre > Lower & PropCorrectedReadsPerLitre < Upper)
-rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_FISHE_NoOutliers_Temp$PropCorrectedReadsPerLitre) 
-boxplot(charr_data_Prop_FISHE_NoOutliers_Temp$PropCorrectedReadsPerLitre)
-#0 outliers removed
-
-#explanatory variable - Mean Quant score
-hist(charr_data_Prop_FISHE_NoOutliers_Temp$QuantMeanPerLitre) #data is not normal, can't use z-score
-range(charr_data_Prop_FISHE_NoOutliers_Temp$QuantMeanPerLitre,na.rm=T)
-# [1]     1.906399 83.533156
-summary(charr_data_Prop_FISHE_NoOutliers_Temp$QuantMeanPerLitre)
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#   1.906   8.117  13.422  16.838  21.222  83.533       3 
-boxplot(charr_data_Prop_FISHE_NoOutliers_Temp$QuantMeanPerLitre)
-
-IQR <- IQR(charr_data_Prop_FISHE_NoOutliers_Temp$QuantMeanPerLitre,na.rm=T)
-quartiles <- quantile(charr_data_Prop_FISHE_NoOutliers_Temp$QuantMeanPerLitre,probs=c(.25,.75),na.rm=T)
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR
-
-charr_data_Prop_FISHE_NoOutliers <- charr_data_Prop_FISHE_NoOutliers_Temp %>% 
-  filter(QuantMeanPerLitre > Lower & QuantMeanPerLitre < Upper)
-rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_FISHE_NoOutliers$QuantMeanPerLitre) 
-boxplot(charr_data_Prop_FISHE_NoOutliers$QuantMeanPerLitre)
-rm(charr_data_Prop_FISHE_NoOutliers_Temp)
-#13 outliers removed
-
-
-#redo plots with no outliers
-
-P1_base_FISHE_NoOut <- ggplot(charr_data_Prop_FISHE_NoOutliers,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_FISHE_NoOut <- P1_base_FISHE_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Prop. Total Reads Per Litre Filtered",
-       title="P1 No Outliers")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P3_base_FISHE_NoOut <- ggplot(charr_data_Prop_FISHE_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_FISHE_NoOut <- P3_base_FISHE_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Prop. Total Reads Per Litre Filtered",
-       title="P3 No Outliers") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P5_base_FISHE_NoOut <- ggplot(charr_data_Prop_FISHE_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_FISHE_NoOut <- P5_base_FISHE_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Prop. Total Reads)", paste("Per Litre Filtered"))),
-       title="P5 No Outliers") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-
-
-#Save all 6 plots in 1 (multiplot function from online)
-Multiplot_FISHE_NoOut <- grid.arrange(grobs=list(P1_FISHE_NoOut,P1_FISHE,P2_FISHE,
-                                                        P3_FISHE_NoOut,P3_FISHE,P4_FISHE,
-                                                        P5_FISHE_NoOut,P5_FISHE,P6_FISHE),
-                                             cols=3,
-                                             top="No Outliers FISHE")
-ggsave(Multiplot_FISHE_NoOut,
-       file="DataVisualization_Transformations_FISHE_NoOutliers_20Oct2023.pdf", 
-       height=20, width=25,units = "in")
-
-
-
-######### FISHE Final model ##########
-FinalModel_FISHE <- glmmTMB(data = charr_data_Prop_FISHE_NoOutliers, 
-                                   na.action = na.omit,family = beta_family(),REML=T,
-                                   PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|Run) + (1|Code))
-summary(FinalModel_FISHE) 
-AICc(FinalModel_FISHE)# -185.9863
-Anova(FinalModel_FISHE)
-
-###plot the model
-# Extract the prediction data frame
-pred.mm_FISHE <- ggpredict(FinalModel_FISHE, terms = c("QuantMeanPerLitre"))  # this gives overall predictions for the model
-
-# Plot the predictions 
-FinalModel_FISHE_plot <- ggplot(pred.mm_FISHE) + 
-  geom_line(data = pred.mm_FISHE, colour="black", 
+FinalLogModel_Zero_plot <- ggplot(pred_log_Zero) + 
+  geom_line(data = pred_log_Zero, colour="black", 
             aes(x = x, y = predicted)) +          # slope
-  geom_ribbon(data = pred.mm_FISHE,
+  geom_ribbon(data = pred_log_Zero,
               aes(x = x,
                   ymin = predicted - std.error,
                   ymax = predicted + std.error),
               fill = "grey", alpha = 0.5) +  # error band
-  geom_point(data = charr_data_Prop_FISHE_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
+  geom_point(data = All_data_Prop_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
              aes(x = QuantMeanPerLitre, y = PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
-  scale_fill_manual(values=c("#D95F02"))+
-  scale_shape_manual(values=c(22))+
+  scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
+  scale_shape_manual(values=c(21,22,23))+
   labs(x = "Mean Copies Per Litre Filtered",
        y = "Prop. Total Reads Per Litre Filtered",
-       title = "Beta GLMM FISHE\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|qPCRRun) + (1|River)") +
+       title = "Log Normal MM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + DNAConcScale + Result + Species + (1|qPCRRun) + (1|River)") +
   theme_bw()+
   theme(legend.position = "right", 
         axis.text = element_text(size = 20), 
         axis.title=element_text(size = 20), 
         panel.border = element_rect(linewidth =0.5),
         plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank())
-
+        panel.grid.major=element_blank());FinalLogModel_Zero_plot
 
 #export plots
-ggsave(FinalModel_FISHE_plot, #plot you want to save
-       file = "AtlanticSalmon_FISHE_GLMMBeta_20Oct2023.pdf", #filename to save the plot as
+ggsave(FinalModel_Zero_plot, #plot you want to save
+       file = "AllSpecies_AllMarkers_Zero_NoOutliers_GLMMBeta_25Oct2023.pdf", #filename to save the plot as
        height = 10, #height of the plot file
        width = 16,  #width of the plot file
        units = "in") #units of the height and width
 
-
-
-
-
-
-
-########## MIFISHU Data plots and Outlier Removal##########
-#picking data transformations
-# PropCorrectedReadsPerLitre vs. QuantMeanPerLitre = P1
-# CorrectedReadsPerLitre vs. QuantMeanPerLitre = P2
-# PropCorrectedReadsPerLitre vs. log10(QuantMeanPerLitre) = P3
-# CorrectedReadsPerLitre vs. log10(QuantMeanPerLitre) = P4
-# log10(PropCorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P5
-# log10(CorrectedReadsPerLitre) vs. log10(QuantMeanPerLitre) = P6
-
-charr_data_Model_MIFISHU <- charr_data_Model %>% 
-  filter(charr_data_Model$Marker == "MIFISHU")
-
-P1_base_MIFISHU <- ggplot(charr_data_Model_MIFISHU,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_MIFISHU <- P1_base_MIFISHU +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Prop. Total Reads Per Litre Filtered",
-       title="P1")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P2_base_MIFISHU <- ggplot(charr_data_Model_MIFISHU,aes(x=QuantMeanPerLitre,y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P2_MIFISHU <- P2_base_MIFISHU +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Corrected Reads Per Litre Filtered",
-       title="P2")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P3_base_MIFISHU <- ggplot(charr_data_Model_MIFISHU,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_MIFISHU <- P3_base_MIFISHU +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Prop. Total Reads Per Litre Filtered",
-       title="P3") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P4_base_MIFISHU <- ggplot(charr_data_Model_MIFISHU,aes(x=log10(QuantMeanPerLitre),y=CorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P4_MIFISHU <- P4_base_MIFISHU +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Corrected Reads Per Litre Filtered",
-       title="P4") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P5_base_MIFISHU <- ggplot(charr_data_Model_MIFISHU,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_MIFISHU <- P5_base_MIFISHU +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Prop. Total Reads)", paste("Per Litre Filtered"))),
-       title="P5") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P6_base_MIFISHU <- ggplot(charr_data_Model_MIFISHU,aes(x=log10(QuantMeanPerLitre),y=log10(CorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P6_MIFISHU <- P6_base_MIFISHU +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Corrected Reads)", paste("Per Litre Filtered"))),
-       title="P6") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-#Save all 6 plots in 1
-Multiplot_MIFISHU <- grid.arrange(grobs=list(P1_MIFISHU,P2_MIFISHU,P3_MIFISHU,
-                                                    P4_MIFISHU,P5_MIFISHU,P6_MIFISHU),
-                                         cols=2,
-                                         top="Raw Data MIFISHU")
-ggsave(Multiplot_MIFISHU,
-       file="DataVisualization_Transformations_MIFISHU_20Oct2023.pdf", 
-       height=20, width=15,units = "in")
-
-
-
-###remove outliers
-
-#pull out just the Proportion data for modelling
-charr_data_Prop_MIFISHU <- charr_data_Model_MIFISHU %>%  
-  dplyr::select(!c(RawReads,RawReadsPerLitre,CorrectedReads,CorrectedReadsPerLitre))
-
-#Response variable - proportion of total reads
-hist(charr_data_Prop_MIFISHU$PropCorrectedReadsPerLitre) #data is not normal, can't use z-score
-format(range(charr_data_Prop_MIFISHU$PropCorrectedReadsPerLitre),scientific=F)
-# [1] "0.0000009191919" "0.9677906976744"
-boxplot(charr_data_Prop_MIFISHU$PropCorrectedReadsPerLitre)
-summary(charr_data_Prop_MIFISHU$PropCorrectedReadsPerLitre)
-# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-# 0.0000009 0.0621559 0.1945986 0.2559774 0.3913614 0.9677907 
-IQR <- IQR(charr_data_Prop_MIFISHU$PropCorrectedReadsPerLitre)
-quartiles <- quantile(charr_data_Prop_MIFISHU$PropCorrectedReadsPerLitre,probs=c(.25,.75),na.rm=F)
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR
-
-charr_data_Prop_MIFISHU_NoOutliers_Temp <- charr_data_Prop_MIFISHU %>% 
-  filter(PropCorrectedReadsPerLitre > Lower & PropCorrectedReadsPerLitre < Upper)
-rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_MIFISHU_NoOutliers_Temp$PropCorrectedReadsPerLitre) 
-boxplot(charr_data_Prop_MIFISHU_NoOutliers_Temp$PropCorrectedReadsPerLitre)
-#7 outliers removed
-
-#explanatory variable - Mean Quant score
-hist(charr_data_Prop_MIFISHU_NoOutliers_Temp$QuantMeanPerLitre) #data is not normal, can't use z-score
-range(charr_data_Prop_MIFISHU_NoOutliers_Temp$QuantMeanPerLitre,na.rm=T)
-# [1]  1.138026 248.628400
-summary(charr_data_Prop_MIFISHU_NoOutliers_Temp$QuantMeanPerLitre)
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#   1.138   6.893  12.334  17.260  20.790 248.628      30 
-boxplot(charr_data_Prop_MIFISHU_NoOutliers_Temp$QuantMeanPerLitre)
-
-IQR <- IQR(charr_data_Prop_MIFISHU_NoOutliers_Temp$QuantMeanPerLitre,na.rm=T)
-quartiles <- quantile(charr_data_Prop_MIFISHU_NoOutliers_Temp$QuantMeanPerLitre,probs=c(.25,.75),na.rm=T)
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR
-
-charr_data_Prop_MIFISHU_NoOutliers <- charr_data_Prop_MIFISHU_NoOutliers_Temp %>% 
-  filter(QuantMeanPerLitre > Lower & QuantMeanPerLitre < Upper)
-rm(IQR, quartiles,Lower,Upper)
-hist(charr_data_Prop_MIFISHU_NoOutliers$QuantMeanPerLitre) 
-boxplot(charr_data_Prop_MIFISHU_NoOutliers$QuantMeanPerLitre)
-rm(charr_data_Prop_MIFISHU_NoOutliers_Temp)
-#42 outliers removed
-
-
-#redo plots with no outliers
-
-P1_base_MIFISHU_NoOut <- ggplot(charr_data_Prop_MIFISHU_NoOutliers,aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) #colour by marker type
-P1_MIFISHU_NoOut <- P1_base_MIFISHU_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x="Mean Copies Per Litre Filtered",
-       y="Prop. Total Reads Per Litre Filtered",
-       title="P1 No Outliers")   + #label for the yaxis
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P3_base_MIFISHU_NoOut <- ggplot(charr_data_Prop_MIFISHU_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=PropCorrectedReadsPerLitre,fill=Marker,shape=Marker))
-P3_MIFISHU_NoOut <- P3_base_MIFISHU_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = "Prop. Total Reads Per Litre Filtered",
-       title="P3 No Outliers") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-P5_base_MIFISHU_NoOut <- ggplot(charr_data_Prop_MIFISHU_NoOutliers,aes(x=log10(QuantMeanPerLitre),y=log10(PropCorrectedReadsPerLitre),fill=Marker,shape=Marker))
-P5_MIFISHU_NoOut <- P5_base_MIFISHU_NoOut +
-  geom_point(alpha=0.7) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = expression(atop("log"["10"]~"(Mean Copies)", paste("Per Litre Filtered"))),
-       y = expression(atop("log"["10"]~"(Prop. Total Reads)", paste("Per Litre Filtered"))),
-       title="P5 No Outliers") +
-  theme_bw() + #overall theme
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank()) #changes the axes, etc
-
-
-
-#Save all 6 plots in 1 (multiplot function from online)
-Multiplot_MIFISHU_NoOut <- grid.arrange(grobs=list(P1_MIFISHU_NoOut,P1_MIFISHU,P2_MIFISHU,
-                                                          P3_MIFISHU_NoOut,P3_MIFISHU,P4_MIFISHU,
-                                                          P5_MIFISHU_NoOut,P5_MIFISHU,P6_MIFISHU),
-                                               cols=3,
-                                               top="No Outliers MIFISHU")
-ggsave(Multiplot_MIFISHU_NoOut,
-       file="DataVisualization_Transformations_MIFISHU_NoOutliers_20Oct2023.pdf", 
-       height=20, width=25,units = "in")
-
-######### MIFISHU Final model ##########
-FinalModel_MIFISHU <- glmmTMB(data = charr_data_Prop_MIFISHU_NoOutliers, 
-                                     na.action = na.omit,family = beta_family(),REML=T,
-                                     PropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|Run) + (1|Code))
-
-summary(FinalModel_MIFISHU) 
-AICc(FinalModel_MIFISHU)# -340.6255
-Anova(FinalModel_MIFISHU)
-
-###plot the model
-# Extract the prediction data frame
-pred.mm_MIFISHU <- ggpredict(FinalModel_MIFISHU, terms = c("QuantMeanPerLitre"))  # this gives overall predictions for the model
-
-# Plot the predictions 
-FinalModel_MIFISHU_plot <- ggplot(pred.mm_MIFISHU) + 
-  geom_line(data = pred.mm_MIFISHU, colour="black", 
-            aes(x = x, y = predicted)) +          # slope
-  geom_ribbon(data = pred.mm_MIFISHU,
-              aes(x = x,
-                  ymin = predicted - std.error,
-                  ymax = predicted + std.error),
-              fill = "grey", alpha = 0.5) +  # error band
-  geom_point(data = charr_data_Prop_MIFISHU_NoOutliers, alpha=0.7,         # adding the raw data (scaled values)
-             aes(x = QuantMeanPerLitre, y = PropCorrectedReadsPerLitre,fill=Marker,shape=Marker)) +
-  scale_fill_manual(values=c("#7570B3"))+
-  scale_shape_manual(values=c(23))+
-  labs(x = "Mean Copies Per Litre Filtered",
-       y = "Prop. Total Reads Per Litre Filtered",
-       title = "Beta GLMM MIFISHU\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|qPCRRun) + (1|River)") +
-  # coord_cartesian(ylim=c(0, 1)) +
-  theme_bw()+
-  theme(legend.position = "right", 
-        axis.text = element_text(size = 20), 
-        axis.title=element_text(size = 20), 
-        panel.border = element_rect(linewidth =0.5),
-        plot.margin=unit(c(5,5,7,5), "mm"),
-        panel.grid.major=element_blank())
-
-
-#export plots
-ggsave(FinalModel_MIFISHU_plot, #plot you want to save
-       file = "AtlanticSalmon_MIFISHU_GLMMBeta_20Oct2023.pdf", #filename to save the plot as
+ggsave(FinalLModel_Zero_plot, #plot you want to save
+       file = "AllSpecies_AllMarkers_Zero_NoOutliers_LM_25Oct2023.pdf", #filename to save the plot as
        height = 10, #height of the plot file
        width = 16,  #width of the plot file
        units = "in") #units of the height and width
 
-
-
-
-
-######Multiplot All FinalModel Plots#####
-#Save all 6 plots in 1
-Final_Multiplot <- grid.arrange(grobs=list(FinalModel_plot,
-                                                  FinalModel_12S_plot,
-                                                  FinalModel_FISHE_plot,
-                                                  FinalModel_MIFISHU_plot),
-                                       cols=2,
-                                       top="Beta GLMM\nPropCorrectedReadsPerLitre ~ QuantMeanPerLitre + (1|qPCRRun) + (1|River)")
-ggsave(Final_Multiplot,
-       file="AtlanticSalmon_AllMarkers_GLMMMultiplot_20Oct2023.pdf", 
-       height=20, width=25,units = "in")
-
-
-
-
-
-
-
-
-
-
-
-
-
-#######Coefficient Estimates all models#######
-#FinalModel
-FinalModelSum <- summary(FinalModel)
-
-lme4::formatVC(FinalModelSum$varcor$cond) #"random effects variances"
-coef(FinalModelSum)$cond #"conditional fixed effects")
-
-tab_model(FinalModel, show.ci = T)
-
-
-
-
-
-
-FinalModel_12S
-
-
-FinalModel_FISHE
-
-
-
-FinalModel_MIFISHU
-
+ggsave(FinalLogModel_Zero_plot, #plot you want to save
+       file = "AllSpecies_AllMarkers_Zero_NoOutliers_LogNormalMM_25Oct2023.pdf", #filename to save the plot as
+       height = 10, #height of the plot file
+       width = 16,  #width of the plot file
+       units = "in") #units of the height and width
 
 
 ######save workspace######
