@@ -15,7 +15,7 @@ library("car")
 library("MuMIn")
 library("pscl")
 library("brms")
-library("mgcv")
+library("mgcv") #for GAM, GAMM
 
 #set wd
 setwd("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/")
@@ -57,6 +57,8 @@ format(range(AllSpecies_AllMarkers_NoZero_NoOutliers$PropCorrectedReadsPerLitre)
 var(AllSpecies_AllMarkers_NoZero_NoOutliers$PropCorrectedReadsPerLitre)# [1] 0.06758297
 mean(AllSpecies_AllMarkers_NoZero_NoOutliers$PropCorrectedReadsPerLitre)# [1] 0.3001119
 
+#plots of continuous explanatory variables to check for correlation
+plot(AllSpecies_AllMarkers_NoZero_NoOutliers$QuantMeanPerLitre,AllSpecies_AllMarkers_NoZero_NoOutliers$DNAConcScale)
 
 #GAM with cubic regression splines
 #plot of data
@@ -109,7 +111,7 @@ Test1_ScatterPlot <- ggplot(AllSpecies_AllMarkers_NoZero_NoOutliers,
   theme(legend.position = "right",axis.text = element_text(size = 20), axis.title=element_text(size = 20),panel.border = element_rect(linewidth =0.5),plot.margin=unit(c(5,5,7,5), "mm"),panel.grid.major=element_blank(),panel.grid.minor=element_blank())
 Test1_ScatterPlot
 
-#make GAM with fill formula
+#make GAM with 2 variables
 Test2 <- gam(data = AllSpecies_AllMarkers_NoZero_NoOutliers,
              PropCorrectedReadsPerLitre ~ s(QuantMeanPerLitre,fx=F,k=-1,bs="cr") + Species)
                # Marker +
@@ -151,7 +153,21 @@ Test2_ScatterPlot <- ggplot(AllSpecies_AllMarkers_NoZero_NoOutliers,
 Test2_ScatterPlot
 
 
+#make GAM with full formula
+Test3 <- mgcv::gamm(data = AllSpecies_AllMarkers_NoZero_NoOutliers,
+             family=betar,
+             na.action=na.omit,
+             formula = PropCorrectedReadsPerLitre ~ s(QuantMeanPerLitre, bs="cs") + s(DNAConcScale, bs="cs") + Species + Marker + Type + Result,
+             random = list(Run=~1, Code=~1))
 
+plot(Test3$lme)
+plot(Test3$gam)
+summary(Test3$gam)
+summary(Test3$lme)
+anova(Test3$gam)
+anova(Test3$lme)
+vis.gam(Test3$gam, theta=120, color="heat") #show the 3D version of the model
+gam.check(Test3$gam,pch=19,cex=.3)
 
 
 
