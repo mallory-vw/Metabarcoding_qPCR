@@ -3,6 +3,7 @@ load("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabardoding_qP
 
 #load libraries
 library("tidyverse")
+library("tidymv") #get GAM predictions
 library("ggeffects")
 library("fitdistrplus")
 library("stargazer")
@@ -149,26 +150,57 @@ Test2_ScatterPlot <- ggplot(AllSpecies_AllMarkers_NoZero_NoOutliers,
        y="Prop. Total Reads Per Litre Filtered",
        title="GAM: ReadsPerLitre ~ MeanCopiesPerLitre")   + #label for the yaxis
   theme_bw()+
-  theme(legend.position = "right",axis.text = element_text(size = 20), axis.title=element_text(size = 20),panel.border = element_rect(linewidth =0.5),plot.margin=unit(c(5,5,7,5), "mm"),panel.grid.major=element_blank(),panel.grid.minor=element_blank())
+  theme(legend.position = "right",axis.text = element_text(size = 20), axis.title=element_text(size = 20),panel.border = element_rect(linewidth =0.5),plot.margin=unit(c(5,5,7,5), "mm"),panel.grid.major=element_blank())
 Test2_ScatterPlot
 
 
 #make GAM with full formula
-Test3 <- mgcv::gamm(data = AllSpecies_AllMarkers_NoZero_NoOutliers,
+Test3 <- mgcv::gam(data = AllSpecies_AllMarkers_NoZero_NoOutliers,
              family=betar,
              na.action=na.omit,
-             formula = PropCorrectedReadsPerLitre ~ s(QuantMeanPerLitre, bs="cs") + s(DNAConcScale, bs="cs") + Species + Marker + Type + Result,
-             random = list(Run=~1, Code=~1))
+             formula = PropCorrectedReadsPerLitre ~ s(QuantMeanPerLitre, bs="cs") + s(DNAConcScale, bs="cs") + 
+               Species + Marker + Type + Result + Run + Code)
 
-plot(Test3$lme)
-plot(Test3$gam)
-summary(Test3$gam)
-summary(Test3$lme)
-anova(Test3$gam)
-anova(Test3$lme)
-vis.gam(Test3$gam, theta=120, color="heat") #show the 3D version of the model
-gam.check(Test3$gam,pch=19,cex=.3)
+plot(Test3)
+summary(Test3)
+anova(Test3)
+vis.gam(Test3, theta=120, color="heat") #show the 3D version of the model
+gam.check(Test3,pch=19,cex=.3)
 
+
+#remove non-significant vars
+Test4 <- mgcv::gam(data = AllSpecies_AllMarkers_NoZero_NoOutliers,
+                   family=betar,
+                   na.action=na.omit,
+                   formula = PropCorrectedReadsPerLitre ~ s(QuantMeanPerLitre, fx=F,k=-1,bs="cr") + DNAConcScale + Marker + Code)
+
+plot(Test4)
+summary(Test4)
+anova(Test4)
+vis.gam(Test4, theta=120, color="heat") #show the 3D version of the model
+gam.check(Test4,pch=19,cex=.3)
+
+#Plot for Test4 with data
+plot(Test4, page = 1, all.terms = TRUE)
+
+Test4_pred <- predict(Test4, se=T, type="response")
+
+Test4_ScatterPlot <- ggplot(AllSpecies_AllMarkers_NoZero_NoOutliers,
+                            aes(x=QuantMeanPerLitre,y=PropCorrectedReadsPerLitre))+
+  geom_point(aes(fill=Marker,shape=Marker),alpha=0.5)+
+  scale_fill_manual(values=c("#1B9E77","#D95F02","#7570B3"))+
+  scale_shape_manual(values=c(21,22,23))+
+  geom_line(aes(x=QuantMeanPerLitre[I1],  y=Test4_pred$fit[I1]),colour="black")+#Quant line
+  geom_ribbon(aes(x = QuantMeanPerLitre[I1],
+                  ymin = Test4_pred$fit[I1]-2*Test4_pred$se[I1], #Lower CI
+                  ymax = Test4_pred$fit[I1]+2*Test4_pred$se[I1]), #Upper CI
+              fill = "grey", alpha = 0.5) +
+  labs(x="Mean Copies Per Litre Filtered",
+       y="Prop. Total Reads Per Litre Filtered",
+       title="GAM: ReadsPerLitre ~ MeanCopiesPerLitre")   + #label for the yaxis
+  theme_bw()+
+  theme(legend.position = "right",axis.text = element_text(size = 20), axis.title=element_text(size = 20),panel.border = element_rect(linewidth =0.5),plot.margin=unit(c(5,5,7,5), "mm"),panel.grid.major=element_blank(),panel.grid.minor=element_blank())
+Test4_ScatterPlot
 
 
 
