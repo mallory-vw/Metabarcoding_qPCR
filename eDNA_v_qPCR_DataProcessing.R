@@ -1,5 +1,5 @@
 #load workspace
-load("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabardoding_qPCR/eDNA_v_qPCR_DataProcessing_workspace.RData")
+load("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabarcoding_qPCR/eDNA_v_qPCR_DataProcessing_workspace.RData")
 
 #load libraries
 library("tidyverse")
@@ -12,11 +12,23 @@ library("RColorBrewer")
 #set wd
 setwd("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/")
 
-#load all data
+#####load all data#####
 metadata <- read.csv("RiverSamplingMetadata_2019_2021.csv",na.strings=c("","NA")) %>% 
   rename(Name=RiverName,
          Code=RiverCode) %>% 
   mutate(Year=factor(Year))
+
+sample_metadata_raw <- read.csv("SampleMetadata_EnviroData_1Nov2023.csv",na.strings=c("","NA")) %>% 
+  rename(Name=RiverName,
+         Code=RiverCode,
+         Verified=Sample.Verified) %>% 
+  mutate(Year=factor(Year)) 
+  
+site_metadata_raw <- read.csv("SiteMetadata_EnviroData_1Nov2023.csv",na.strings=c("","NA")) %>% 
+  rename(Name=RiverName,
+         Code=RiverCode) %>% 
+  mutate(Year=factor(Year)) 
+
 
 eDNA_data_raw <- read.csv("eDNA_results_PrelimCleaned_5Oct2023.csv", na.strings = "N/A") %>% 
   mutate(CorrectedDepth = as.integer(CorrectedDepth),
@@ -35,6 +47,28 @@ PinkSalmon_qPCR_raw <- read.csv("qPCR_PinkSalmon_results_PrelimCleaned_5Oct2023.
 ArcticCharr_qPCR_raw <- read.csv("qPCR_ArcticCharr_results_PrelimCleaned_10Oct2023.csv") %>% 
   rename(SampleID=CEGA_Sample_ID,
          DNAConc=DNAConc_pg_uL)
+
+#####Organize Sample Site data#####
+sample_metadata <- sample_metadata_raw %>% #split the sample sites into Center,Right,Left,Blank
+  separate_wider_delim(SampleID, delim="2019",names = c("SampleID2","Type"), too_few="align_start", cols_remove = F)#the 2019 samples all have 2019 in the SampleIDs
+                                 
+                                 
+
+
+
+
+sample_metadata
+site_metadata
+
+
+left_join(metadata) %>% 
+  relocate(VolFiltered, .before=Sample_Year) %>% 
+  relocate(RawPropReads, .after=RawReads) %>% 
+  relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
+  relocate(c(Name,Code,ReplicateSet,Date,Lat,Lon,Year),.after=Type) %>% 
+  select(!Sample_Year)
+
+
 
 #####Site Map#####
 #any sample overlap between years?
