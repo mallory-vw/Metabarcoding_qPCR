@@ -49,55 +49,88 @@ ArcticCharr_qPCR_raw <- read.csv("qPCR_ArcticCharr_results_PrelimCleaned_10Oct20
          DNAConc=DNAConc_pg_uL)
 
 #####Organize Sample Site data#####
-sample_metadata <- sample_metadata_raw %>% #split the sample sites into Center,Right,Left,Blank
-  separate_wider_delim(SampleID, delim="2019",names = c("SampleID2","Type"), too_few="align_start", cols_remove = F)#the 2019 samples all have 2019 in the SampleIDs
-                                 
-                                 
+sample_metadata <- sample_metadata_raw %>% 
+  left_join(site_metadata_raw, by=c("Code","Year")) %>%  #changed Crooked River, Shinney's River side channel codes to match properly
+  rename(SampleName = Name.x,
+         SiteName = Name.y,
+         SampleDate = Date.x,
+         SiteDate=Date.y,
+         SampleLat = Latitude.x,
+         SampleLon = Longitude.x,
+         SiteLat = Latitude.y,
+         SiteLon = Longitude.y,
+         SampleNotes = Notes.x,
+         SiteNotes = Notes.y,
+         FullTrans=FullTransect.y.n,
+         MeanDepth=Mean.Depth,
+         MeanFlow=Mean.Flow,
+         StartTime=StartTime.NDT,
+         EndTime=EndTime.NDT) %>% 
+  relocate(SiteDate, .after = SampleDate) %>% 
+  relocate(SiteName, .after = SampleName) %>% 
+  mutate(NewLatPrep=case_when(Type == "Center" ~ Center.Latitude,
+                              Type == "Right" ~ Right.Latitude,
+                              Type == "Left" ~ Left.Latitude,
+                              Type == "Negative" ~ Center.Latitude),
+         NewLat=case_when(is.na(NewLatPrep) & is.na(SiteLat) & is.na(SampleLat) & is.na(Left.Latitude) & is.na(Center.Latitude) ~ Right.Latitude,
+                          is.na(NewLatPrep) & is.na(SiteLat) & is.na(SampleLat) & is.na(Left.Latitude) ~ Center.Latitude,
+                          is.na(NewLatPrep) & is.na(SiteLat) & is.na(SampleLat) ~ Left.Latitude,
+                          is.na(NewLatPrep) & is.na(SiteLat) ~ SampleLat,
+                          is.na(NewLatPrep) & is.na(SiteLat) ~ SampleLat,
+                          is.na(NewLatPrep) ~ SiteLat,
+                          TRUE ~ NewLatPrep)) %>% 
+  dplyr::select(!NewLatPrep) %>% 
+  relocate(NewLat, .before=SampleLat) %>% 
+  mutate(NewLonPrep=case_when(Type == "Center" ~ Center.Longitude,
+                              Type == "Right" ~ Right.Longitude,
+                              Type == "Left" ~ Left.Longitude,
+                              Type == "Negative" ~ Center.Longitude),
+       NewLon=case_when(is.na(NewLonPrep) & is.na(SiteLon) & is.na(SampleLon) & is.na(Left.Longitude) & is.na(Center.Longitude) ~ Right.Longitude,
+                        is.na(NewLonPrep) & is.na(SiteLon) & is.na(SampleLon) & is.na(Left.Longitude) ~ Center.Longitude,
+                        is.na(NewLonPrep) & is.na(SiteLon) & is.na(SampleLon) ~ Left.Longitude,
+                        is.na(NewLonPrep) & is.na(SiteLon) ~ SampleLon,
+                        is.na(NewLonPrep) & is.na(SiteLon) ~ SampleLon,
+                        is.na(NewLonPrep) ~ SiteLon,
+                        TRUE ~ NewLonPrep)) %>% 
+  dplyr::select(!NewLonPrep) %>% 
+  relocate(NewLon, .after=NewLat) %>% 
+  dplyr::select(!c(SampleLat,SampleLon,SiteLat,SiteLon,Left.Latitude,Left.Longitude,Center.Latitude,Center.Longitude,Right.Latitude,Right.Longitude)) %>% 
+  relocate(c(MeanDepth,MeanFlow), .after=Verified) %>% 
+  relocate(c(SampleNotes,SiteNotes), .before=Depth1) %>% 
+  relocate(FullTrans, .after=WC)
+  
+  
 
 
-
-
-sample_metadata
-site_metadata
-
-
-left_join(metadata) %>% 
-  relocate(VolFiltered, .before=Sample_Year) %>% 
-  relocate(RawPropReads, .after=RawReads) %>% 
-  relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(Name,Code,ReplicateSet,Date,Lat,Lon,Year),.after=Type) %>% 
-  select(!Sample_Year)
 
 
 
 #####Site Map#####
 #any sample overlap between years?
-Sites_2019 <- unique(subset(metadata, metadata$Year == "2019")$Code)
-Sites_2020 <- unique(subset(metadata, metadata$Year == "2020")$Code)
-Sites_2021 <- unique(subset(metadata, metadata$Year == "2021")$Code)
+Sites_2019 <- unique(subset(sample_metadata, sample_metadata$Year == "2019")$Code)
+Sites_2020 <- unique(subset(sample_metadata, sample_metadata$Year == "2020")$Code)
+Sites_2021 <- unique(subset(sample_metadata, sample_metadata$Year == "2021")$Code)
 
 intersect(Sites_2019,Sites_2020) #Not shared
 intersect(Sites_2020,Sites_2021) #Not shared
 intersect(Sites_2019,Sites_2021) #"ENG" "FOR" "HUR" "IKA" "KIN" "MBB" "PAN" "PIN" "109" "SAN" "CHR" "SUS"
 
-table(metadata_plot$Code)
-
-metadata_plot <- metadata %>% 
-  distinct(Name,Code,Year,.keep_all = T) %>% 
+metadata_plot <- sample_metadata %>% 
+  distinct(SampleName,Code,Year,.keep_all = T) %>% 
   group_by(Code) %>%
   mutate(CodeYear=ifelse(anyDuplicated(Code),"2019 and 2021",as.character(Year))) %>% #if any sites have both 2019 and 2020, note them
   distinct(Code,CodeYear,.keep_all = T) %>% 
   mutate(CodeYear=factor(CodeYear, levels = c("2019","2020","2021","2019 and 2021"))) %>% 
-  na.omit(Lat)
+  drop_na(NewLat)
 
 
 #Create a bounding box using tmaps
-box <- bb(x=c(min(metadata$Lon,na.rm=T), #Lonmin -64.1 
-             min(metadata$Lat,na.rm=T), #Latmin 46.7
-             max(metadata$Lon,na.rm=T), #Lonmax -52.8
-             max(metadata$Lat,na.rm=T))) #Latmax 59.4
-lat_centre <- ((max(metadata$Lat,na.rm=T) - min(metadata$Lat,na.rm=T))/2)+min(metadata$Lat,na.rm=T)
-lon_centre <- ((max(metadata$Lon,na.rm=T) - min(metadata$Lon,na.rm=T))/2)+min(metadata$Lon,na.rm=T)
+box <- bb(x=c(min(metadata_plot$NewLon,na.rm=T), #Lonmin -64.1 
+             min(metadata_plot$NewLat,na.rm=T), #Latmin 46.7
+             max(metadata_plot$NewLon,na.rm=T), #Lonmax -52.8
+             max(metadata_plot$NewLat,na.rm=T))) #Latmax 59.4
+lat_centre <- ((max(metadata_plot$NewLat,na.rm=T) - min(metadata_plot$NewLat,na.rm=T))/2)+min(metadata_plot$NewLat,na.rm=T)
+lon_centre <- ((max(metadata_plot$NewLon,na.rm=T) - min(metadata_plot$NewLon,na.rm=T))/2)+min(metadata_plot$NewLon,na.rm=T)
 
 #get googlemap
 base <- get_googlemap(center = c(lon_centre,lat_centre), 
@@ -110,7 +143,7 @@ base <- get_googlemap(center = c(lon_centre,lat_centre),
 
 eDNARivers_SiteMap <- ggmap(base) +
   geom_point(data=metadata_plot,size=4,#position=position_jitter(width = 0.1, height = 0.2),
-             aes(x=Lon,y=Lat,fill=CodeYear,shape=CodeYear))+
+             aes(x=NewLon,y=NewLat,fill=CodeYear,shape=CodeYear))+
   scale_shape_manual(values=c(21,22,23,24))+
   scale_fill_manual(values=c("#BC3C29","#4DBBD5","#E18727","#42B540"))+
 
@@ -139,7 +172,7 @@ eDNARivers_SiteMap <- ggmap(base) +
         panel.grid.major = element_blank())
 
 ggsave(eDNARivers_SiteMap, 
-       file = "eDNARivers_SiteMap_19Oct2023.pdf", 
+       file = "eDNARivers_SiteMap_2Nov2023.pdf", 
        height = 15, 
        width = 10, 
        units = "in")
@@ -193,16 +226,16 @@ AtlSalmon_qPCR_data <- AtlSalmon_qPCR_raw %>%
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 AtlSalmon_data <- AtlSalmon_eDNA_data %>% 
   inner_join(AtlSalmon_qPCR_data) %>% 
-  left_join(metadata) %>% 
-  relocate(VolFiltered, .before=Sample_Year) %>% 
+  left_join(sample_metadata) %>% 
+  relocate(VolFil, .before=Sample_Year) %>% 
   relocate(RawPropReads, .after=RawReads) %>% 
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(Name,Code,ReplicateSet,Date,Lat,Lon,Year),.after=Type) %>% 
+  relocate(c(SampleName,Code,ReplicateSet,SampleDate,NewLat,NewLon,Year),.after=Type) %>% 
   select(!Sample_Year)
 
 
 #export
-write.csv(AtlSalmon_data, "qPCR_eDNA_SalmoSalar_CleanedData_19Oct2023.csv")
+write.csv(AtlSalmon_data, "qPCR_eDNA_SalmoSalar_CleanedData_2Nov2023.csv")
 
 #Pink salmon#
 #check and remove any rows that had inhibition
@@ -216,15 +249,15 @@ PinkSalmon_qPCR_data <- PinkSalmon_qPCR_raw %>%
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 PinkSalmon_data <- PinkSalmon_eDNA_data %>% 
   inner_join(PinkSalmon_qPCR_data) %>% 
-  left_join(metadata) %>% 
-  relocate(VolFiltered, .before=Sample_Year) %>% 
+  left_join(sample_metadata) %>% 
+  relocate(VolFil, .before=Sample_Year) %>% 
   relocate(RawPropReads, .after=RawReads) %>% 
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(Name,Code,ReplicateSet,Date,Lat,Lon,Year),.after=Type) %>% 
+  relocate(c(SampleName,Code,ReplicateSet,SampleDate,NewLat,NewLon,Year),.after=Type) %>% 
   select(!Sample_Year)
 
 #export
-write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_19Oct2023.csv")
+write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_2Nov2023.csv")
 
 #Arctic charr#
 #check and remove any rows that had inhibition
@@ -241,17 +274,18 @@ ArcticCharr_qPCR_data <- ArcticCharr_qPCR_raw %>%
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 ArcticCharr_data <- Charr_eDNA_data %>% 
   inner_join(ArcticCharr_qPCR_data) %>% 
-  left_join(metadata) %>% 
-  relocate(VolFiltered, .before=Sample_Year) %>% 
+  left_join(sample_metadata) %>% 
+  relocate(VolFil, .before=Sample_Year) %>% 
   relocate(RawPropReads, .after=RawReads) %>% 
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(Name,Code,ReplicateSet,Date,Lat,Lon,Year),.after=Type) %>% 
+  relocate(c(SampleName,Code,ReplicateSet,SampleDate,NewLat,NewLon,Year),.after=Type) %>% 
   select(!Sample_Year)
 
 
+
 #export
-write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_19Oct2023.csv")
+write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_2Nov2023.csv")
 
 
 #####save workspace#####
-save.image("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabardoding_qPCR/eDNA_v_qPCR_DataProcessing_workspace.RData")
+save.image("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabarcoding_qPCR/eDNA_v_qPCR_DataProcessing_workspace.RData")
