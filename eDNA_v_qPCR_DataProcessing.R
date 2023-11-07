@@ -13,24 +13,19 @@ library("RColorBrewer")
 setwd("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/")
 
 #####load all raw data#####
-metadata <- read.csv("RiverSamplingMetadata_2019_2021.csv",na.strings=c("","NA")) %>% 
-  rename(Name=RiverName,
-         Code=RiverCode) %>% 
-  mutate(Year=factor(Year))
-
-sample_metadata_raw <- read.csv("SampleMetadata_EnviroData_7Nov2023.csv",na.strings=c("","NA")) %>% #NOTE: Date edited in Excel to Month/Day/Year
+sample_metadata_raw <- read.csv("Metadata/SampleMetadata_EnviroData_7Nov2023.csv",na.strings=c("","NA")) %>% #NOTE: Date edited in Excel to Month/Day/Year
   rename(Name=RiverName,
          Code=RiverCode,
          Verified=Sample.Verified) %>% 
   mutate(Year=factor(Year)) 
   
-site_metadata_raw <- read.csv("SiteMetadata_EnviroData_7Nov2023.csv",na.strings=c("","NA")) %>% #NOTE: Date as Month/Day/Year
+site_metadata_raw <- read.csv("Metadata/SiteMetadata_EnviroData_7Nov2023.csv",na.strings=c("","NA")) %>% #NOTE: Date as Month/Day/Year
   rename(Name=RiverName,
          Code=RiverCode) %>% 
   mutate(Year=factor(Year)) 
 
 
-eDNA_data_raw <- read.csv("eDNA_results_PrelimCleaned_5Oct2023.csv", na.strings = "N/A") %>% 
+eDNA_data_raw <- read.csv("eDNAData/eDNA_results_PrelimCleaned_5Oct2023.csv", na.strings = "N/A") %>% 
   mutate(CorrectedDepth = as.integer(CorrectedDepth),
          Type=factor(Type)) %>% 
   rename(RawVertReadsPerSample=RawVertDepthPerSample,
@@ -38,13 +33,13 @@ eDNA_data_raw <- read.csv("eDNA_results_PrelimCleaned_5Oct2023.csv", na.strings 
          CorrectedReads=CorrectedDepth,
          SampleID=Sample)
 
-AtlSalmon_qPCR_raw <- read.csv("qPCR_SalmoSalar_results_PrelimCleaned_5Oct2023.csv") %>% 
+AtlSalmon_qPCR_raw <- read.csv("qPCRData/qPCR_AtlSalmon_results_PrelimCleaned_5Oct2023.csv") %>% 
   rename(SampleID=CEGA_Sample_ID,
          DNAConc=DNAConc_pg_uL)
-PinkSalmon_qPCR_raw <- read.csv("qPCR_PinkSalmon_results_PrelimCleaned_5Oct2023.csv") %>% 
+PinkSalmon_qPCR_raw <- read.csv("qPCRData/qPCR_PinkSalmon_results_PrelimCleaned_5Oct2023.csv") %>% 
   rename(SampleID=CEGA_Sample_ID,
          DNAConc=DNAConc_pg_uL)
-ArcticCharr_qPCR_raw <- read.csv("qPCR_ArcticCharr_results_PrelimCleaned_10Oct2023.csv") %>% 
+ArcticCharr_qPCR_raw <- read.csv("qPCRData/qPCR_ArcticCharr_results_PrelimCleaned_10Oct2023.csv") %>% 
   rename(SampleID=CEGA_Sample_ID,
          DNAConc=DNAConc_pg_uL)
 
