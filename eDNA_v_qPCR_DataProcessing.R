@@ -12,19 +12,19 @@ library("RColorBrewer")
 #set wd
 setwd("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/")
 
-#####load all data#####
+#####load all raw data#####
 metadata <- read.csv("RiverSamplingMetadata_2019_2021.csv",na.strings=c("","NA")) %>% 
   rename(Name=RiverName,
          Code=RiverCode) %>% 
   mutate(Year=factor(Year))
 
-sample_metadata_raw <- read.csv("SampleMetadata_EnviroData_1Nov2023.csv",na.strings=c("","NA")) %>% 
+sample_metadata_raw <- read.csv("SampleMetadata_EnviroData_7Nov2023.csv",na.strings=c("","NA")) %>% #NOTE: Date edited in Excel to Month/Day/Year
   rename(Name=RiverName,
          Code=RiverCode,
          Verified=Sample.Verified) %>% 
   mutate(Year=factor(Year)) 
   
-site_metadata_raw <- read.csv("SiteMetadata_EnviroData_1Nov2023.csv",na.strings=c("","NA")) %>% 
+site_metadata_raw <- read.csv("SiteMetadata_EnviroData_7Nov2023.csv",na.strings=c("","NA")) %>% #NOTE: Date as Month/Day/Year
   rename(Name=RiverName,
          Code=RiverCode) %>% 
   mutate(Year=factor(Year)) 
@@ -33,7 +33,7 @@ site_metadata_raw <- read.csv("SiteMetadata_EnviroData_1Nov2023.csv",na.strings=
 eDNA_data_raw <- read.csv("eDNA_results_PrelimCleaned_5Oct2023.csv", na.strings = "N/A") %>% 
   mutate(CorrectedDepth = as.integer(CorrectedDepth),
          Type=factor(Type)) %>% 
-  rename(RawReadsPerSample=RawDepthPerSample,
+  rename(RawVertReadsPerSample=RawVertDepthPerSample,
          RawReads=RawDepth,
          CorrectedReads=CorrectedDepth,
          SampleID=Sample)
@@ -50,11 +50,9 @@ ArcticCharr_qPCR_raw <- read.csv("qPCR_ArcticCharr_results_PrelimCleaned_10Oct20
 
 #####Organize Sample Site data#####
 sample_metadata <- sample_metadata_raw %>% 
-  left_join(site_metadata_raw, by=c("Code","Year")) %>%  #changed Crooked River, Shinney's River side channel codes to match properly
-  rename(SampleName = Name.x,
+  left_join(site_metadata_raw, by=c("Code","Year","Date")) %>%  #merge in site data, manually changed Crooked River, Shinney's River side channel codes to match properly
+  rename(SampleName = Name.x, #rename fields
          SiteName = Name.y,
-         SampleDate = Date.x,
-         SiteDate=Date.y,
          SampleLat = Latitude.x,
          SampleLon = Longitude.x,
          SiteLat = Latitude.y,
@@ -66,9 +64,14 @@ sample_metadata <- sample_metadata_raw %>%
          MeanFlow=Mean.Flow,
          StartTime=StartTime.NDT,
          EndTime=EndTime.NDT) %>% 
-  relocate(SiteDate, .after = SampleDate) %>% 
-  relocate(SiteName, .after = SampleName) %>% 
-  mutate(NewLatPrep=case_when(Type == "Center" ~ Center.Latitude,
+  separate(col=Date, into=c("Month","Day","Year2"),sep="/", remove=F) %>% #Split Date into separate Month/Day columns
+  mutate(Month=case_when(Month==8 ~ "August", #Replace Month number with name and set factor levels
+                         Month==9 ~ "September",
+                         Month==10 ~ "October",
+                         Month==11 ~ "November",
+                         Month==12 ~ "December"),
+         Month=factor(Month, levels=c("August","September","October","November","December"))) %>% 
+  mutate(NewLatPrep=case_when(Type == "Center" ~ Center.Latitude, #consolidate latitude from site to sample based on sample type, either Center, Left, or Right
                               Type == "Right" ~ Right.Latitude,
                               Type == "Left" ~ Left.Latitude,
                               Type == "Negative" ~ Center.Latitude),
@@ -79,9 +82,7 @@ sample_metadata <- sample_metadata_raw %>%
                           is.na(NewLatPrep) & is.na(SiteLat) ~ SampleLat,
                           is.na(NewLatPrep) ~ SiteLat,
                           TRUE ~ NewLatPrep)) %>% 
-  dplyr::select(!NewLatPrep) %>% 
-  relocate(NewLat, .before=SampleLat) %>% 
-  mutate(NewLonPrep=case_when(Type == "Center" ~ Center.Longitude,
+  mutate(NewLonPrep=case_when(Type == "Center" ~ Center.Longitude, #consolidate longitude from site to sample based on sample type, either Center, Left, or Right
                               Type == "Right" ~ Right.Longitude,
                               Type == "Left" ~ Left.Longitude,
                               Type == "Negative" ~ Center.Longitude),
@@ -92,16 +93,15 @@ sample_metadata <- sample_metadata_raw %>%
                         is.na(NewLonPrep) & is.na(SiteLon) ~ SampleLon,
                         is.na(NewLonPrep) ~ SiteLon,
                         TRUE ~ NewLonPrep)) %>% 
-  dplyr::select(!NewLonPrep) %>% 
-  relocate(NewLon, .after=NewLat) %>% 
-  dplyr::select(!c(SampleLat,SampleLon,SiteLat,SiteLon,Left.Latitude,Left.Longitude,Center.Latitude,Center.Longitude,Right.Latitude,Right.Longitude)) %>% 
-  relocate(c(MeanDepth,MeanFlow), .after=Verified) %>% 
+  dplyr::select(!c(Year2,NewLatPrep,NewLonPrep,SampleLat,SampleLon,SiteLat,SiteLon,
+                   Left.Latitude,Left.Longitude,Center.Latitude,Center.Longitude,Right.Latitude,Right.Longitude)) %>%  #remove extraneous columns
+  relocate(c(Month,Day),.after=Year) %>% 
+  relocate(SiteName, .after = SampleName) %>%
+  relocate(c(NewLat,NewLon), .before=WPT) %>% 
+  relocate(c(MeanDepth,MeanFlow), .after=River.Width) %>% 
   relocate(c(SampleNotes,SiteNotes), .before=Depth1) %>% 
   relocate(FullTrans, .after=WC)
   
-  
-
-
 
 
 
@@ -172,7 +172,7 @@ eDNARivers_SiteMap <- ggmap(base) +
         panel.grid.major = element_blank())
 
 ggsave(eDNARivers_SiteMap, 
-       file = "eDNARivers_SiteMap_2Nov2023.pdf", 
+       file = "eDNARivers_SiteMap_7Nov2023.pdf", 
        height = 15, 
        width = 10, 
        units = "in")
@@ -180,14 +180,14 @@ ggsave(eDNARivers_SiteMap,
 ######eDNA#####
 #organize total reads per sample (reads of ALL vertebrates in the sample)
 eDNA_ReadsSample <- eDNA_data_raw %>% 
-  select(SampleID, Type, Marker, RawReadsPerSample) %>% 
+  select(SampleID, Type, Marker, RawVertReadsPerSample) %>% 
   distinct()
 
 #convert to wide
 eDNA_ReadsSample_wide <- eDNA_ReadsSample %>% 
   pivot_wider(id_cols = c("SampleID","Type"),
               names_from = Marker,
-              values_from = RawReadsPerSample)
+              values_from = RawVertReadsPerSample)
 
 #Field blanks, lab negatives, and unknown
 eDNA_ReadsSample_Blank <- eDNA_ReadsSample %>% 
@@ -196,10 +196,10 @@ eDNA_ReadsSample_Blank <- eDNA_ReadsSample %>%
 #Organize data to work with and calculate proportion of total reads, removing blanks and negatives
 eDNA_data <- eDNA_data_raw %>% 
   filter(!Type %in% c("Blank","Negative")) %>%  #remove blanks and negatives
-  filter(!(Type == "Unknown" & is.na(RawReadsPerSample))) %>% #remove the "Unknowns" that also have NA in the Total Vert Reads
-  filter(RawReadsPerSample > 0) %>% #remove anything that had no vert reads at all
-  mutate(CorrectedPropReads = as.character(signif((CorrectedReads/RawReadsPerSample), digits=4))) %>% 
-  mutate(RawPropReads = as.character(signif((RawReads/RawReadsPerSample), digits=4)))
+  filter(!(Type == "Unknown" & is.na(RawVertReadsPerSample))) %>% #remove the "Unknowns" that also have NA in the Total Vert Reads
+  filter(RawVertReadsPerSample > 0) %>% #remove anything that had no vert reads at all
+  mutate(CorrectedPropReads = as.character(signif((CorrectedReads/RawVertReadsPerSample), digits=4))) %>% 
+  mutate(RawPropReads = as.character(signif((RawReads/RawVertReadsPerSample), digits=4)))
 
 #separate data by species
 AtlSalmon_eDNA_data <- eDNA_data %>% 
@@ -230,12 +230,12 @@ AtlSalmon_data <- AtlSalmon_eDNA_data %>%
   relocate(VolFil, .before=Sample_Year) %>% 
   relocate(RawPropReads, .after=RawReads) %>% 
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(SampleName,Code,ReplicateSet,SampleDate,NewLat,NewLon,Year),.after=Type) %>% 
+  relocate(c(SampleName,Code,ReplicateSet,Year,Month,Day,Date,NewLat,NewLon),.after=Type) %>% 
   select(!Sample_Year)
 
 
 #export
-write.csv(AtlSalmon_data, "qPCR_eDNA_SalmoSalar_CleanedData_2Nov2023.csv")
+write.csv(AtlSalmon_data, "qPCR_eDNA_AtlSalmon_CleanedData_7Nov2023.csv")
 
 #Pink salmon#
 #check and remove any rows that had inhibition
@@ -253,11 +253,11 @@ PinkSalmon_data <- PinkSalmon_eDNA_data %>%
   relocate(VolFil, .before=Sample_Year) %>% 
   relocate(RawPropReads, .after=RawReads) %>% 
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(SampleName,Code,ReplicateSet,SampleDate,NewLat,NewLon,Year),.after=Type) %>% 
+  relocate(c(SampleName,Code,ReplicateSet,Year,Month,Day,Date,NewLat,NewLon),.after=Type) %>% 
   select(!Sample_Year)
 
 #export
-write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_2Nov2023.csv")
+write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_7Nov2023.csv")
 
 #Arctic charr#
 #check and remove any rows that had inhibition
@@ -278,13 +278,13 @@ ArcticCharr_data <- Charr_eDNA_data %>%
   relocate(VolFil, .before=Sample_Year) %>% 
   relocate(RawPropReads, .after=RawReads) %>% 
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
-  relocate(c(SampleName,Code,ReplicateSet,SampleDate,NewLat,NewLon,Year),.after=Type) %>% 
+  relocate(c(SampleName,Code,ReplicateSet,Year,Month,Day,Date,NewLat,NewLon),.after=Type) %>% 
   select(!Sample_Year)
 
 
 
 #export
-write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_2Nov2023.csv")
+write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_7Nov2023.csv")
 
 
 #####save workspace#####
