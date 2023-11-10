@@ -1,5 +1,5 @@
 #load workspace
-load("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabardoding_qPCR/eDNA_v_qPCR_GLMs_workspace.RData")
+load("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabarcoding_qPCR/eDNA_v_qPCR_GLMs_workspace.RData")
 
 #load libraries
 library("tidyverse")
@@ -20,18 +20,14 @@ library("brms")
 setwd("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/")
 
 #####load data (see eDNA_v_qPCR_DataProcessing.R)####
-AtlSalmon_data_raw <- read.csv("qPCR_eDNA_SalmoSalar_CleanedData_19Oct2023.csv",stringsAsFactors = T) %>% 
-  dplyr::select(!(X)) %>% 
-  rename(TotalVertReadsPerSample=RawReadsPerSample)
+AtlSalmon_data_raw <- read.csv("qPCR_eDNA_AtlSalmon_CleanedData_7Nov2023.csv",stringsAsFactors = T) %>% 
+  dplyr::select(!(X))
 
-PinkSalmon_data_raw <-read.csv("qPCR_eDNA_PinkSalmon_CleanedData_19Oct2023.csv",stringsAsFactors = T) %>% 
-  dplyr::select(!(X)) %>% 
-  rename(TotalVertReadsPerSample=RawReadsPerSample)
+PinkSalmon_data_raw <-read.csv("qPCR_eDNA_PinkSalmon_CleanedData_7Nov2023.csv",stringsAsFactors = T) %>% 
+  dplyr::select(!(X))
 
-ArcticCharr_data_raw <- read.csv("qPCR_eDNA_ArcticCharr_CleanedData_19Oct2023.csv",stringsAsFactors = T) %>% 
-  dplyr::select(!(X)) %>% 
-  rename(TotalVertReadsPerSample=RawReadsPerSample)
-
+ArcticCharr_data_raw <- read.csv("qPCR_eDNA_ArcticCharr_CleanedData_7Nov2023.csv",stringsAsFactors = T) %>% 
+  dplyr::select(!(X)) 
 
 ###############Models with 0 read count removed###########
 ##############All Species################
@@ -47,15 +43,47 @@ ArcticCharr_data_int <- ArcticCharr_data_raw %>%
 
 All_data_raw <- AtlSalmon_data_int %>% 
   rbind(PinkSalmon_data_int,ArcticCharr_data_int)
+rm(AtlSalmon_data_int,PinkSalmon_data_int,ArcticCharr_data_int)
+
+#calculate pH from pH.mV
+#pH = 7-(mV/X)
+#need to calculate the constant in the formula for each river
+All_data_pHcalc <- All_data_raw %>% 
+  dplyr::select("Name","Code","Year","Month","Day","Date",
+                "NewLat","NewLon","WaterTemp","pH.mV","pH") %>% 
+  arrange(Date) %>% 
+  group_by(Name,Date) %>% 
+  distinct(Name,Date, .keep_all = T) %>% 
+  mutate(pHConst=pH.mV/(7-pH)) %>% #calculate the constant for each sample that has both pH and pH.mV
+  mutate(pHConst2=case_when(Year == 2020 ~ mean(filter(., Year==2019)$pHConst)),  #set the constant for 2020 to be the mean constant of 2019
+         pH2=case_when(Year == 2020 ~ 7-(pH.mV/pHConst2)), #calculate pH for 2020 samples using the average constant from 2019
+         pHfinal=coalesce(pH,pH2)) %>% 
+  relocate(pHfinal, .after= WaterTemp)
+  
+#look at ranges for the measured and calculated pH values
+All_data_pHcalc %>% 
+  group_by(Year) %>% 
+  summarize(pHmin = min(pHfinal),
+            pHmax = max(pHfinal))
+
+All_data_pHcalc %>% 
+  filter(pHfinal >= 7.7)
+
+#I'm not sure I trust the calculations for 2020 - the highest pH is 8.42, which seems SO HIGH
+
+
+
+
+
 
 #Normalize data by Vol filtered and remove any rows with 0 corrected reads
 All_data_NoZero <- All_data_raw %>% 
   filter(CorrectedReads > 0) %>% 
-  mutate(RawReadsPerLitre = RawReads/VolFiltered,
-         PropRawReadsPerLitre = RawPropReads/VolFiltered,
-         CorrectedReadsPerLitre = CorrectedReads/VolFiltered,
-         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFiltered,
-         QuantMeanPerLitre = QuantMean/VolFiltered) %>% 
+  mutate(RawReadsPerLitre = RawReads/VolFil,
+         PropRawReadsPerLitre = RawPropReads/VolFil,
+         CorrectedReadsPerLitre = CorrectedReads/VolFil,
+         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFil,
+         QuantMeanPerLitre = QuantMean/VolFil) %>% 
   relocate(RawReadsPerLitre, .after=RawReads) %>% 
   relocate(PropRawReadsPerLitre, .after = RawPropReads) %>% 
   relocate(CorrectedReadsPerLitre, .after=CorrectedReads) %>% 
@@ -70,12 +98,17 @@ All_data_NoZero <- All_data_raw %>%
 
 #subset out the important data for models
 All_data_NoZero_Model <- All_data_NoZero %>% 
-  dplyr::select("SampleID","Type","Name","Code","Date","Marker","Taxon",
-                "TotalVertReadsPerSample","RawReads","RawReadsPerLitre",
-                "RawPropReads","PropRawReadsPerLitre",
-                "CorrectedReads","CorrectedReadsPerLitre",
-                "CorrectedPropReads","PropCorrectedReadsPerLitre",
-                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result","Species")
+  dplyr::select("SampleID","SampleID2","Type","Name","Code","Year","Month","Day","Date","NewLat","NewLon",
+                "Marker","Taxon",
+                "RawVertReadsPerSample","RawReads","RawPropReads","RawReadsPerLitre","PropRawReadsPerLitre",
+                "CorrectedVertReadsPerSample","CorrectedReads","CorrectedPropReads","CorrectedReadsPerLitre","CorrectedReadsPerLitre",
+                "VolFil","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result","Species",
+                "River.Width","MeanDepth","MeanFlow","WaterTemp","pH","pH.mV","Alkalinity","Chlorine") %>% 
+  mutate_at(c("MeanFlow","MeanDepth"), ~na_if(., 0)) %>% #replace 0s in MeanDepth and MeanFlow with NA
+  mutate(RiverOutput = River.Width*MeanDepth*MeanFlow) %>% #calculate RiverOutput = Width*Depth*Flow
+  relocate(RiverOutput, .after=MeanFlow) %>% 
+  mutate(pHcalc = 7-(pH.mV/57.14)) %>% 
+  relocate(pHcalc, .after=pH.mV)
 
 
 
@@ -633,11 +666,11 @@ ggsave(FinalLogModel_NoZero_plot, #plot you want to save
 #Normalize data by Vol filtered and remove any rows with 0 corrected reads
 AtlSalmon_data_NoZero <- AtlSalmon_data_raw %>% 
   filter(CorrectedReads > 0) %>% 
-  mutate(RawReadsPerLitre = RawReads/VolFiltered,
-         PropRawReadsPerLitre = RawPropReads/VolFiltered,
-         CorrectedReadsPerLitre = CorrectedReads/VolFiltered,
-         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFiltered,
-         QuantMeanPerLitre = QuantMean/VolFiltered) %>% 
+  mutate(RawReadsPerLitre = RawReads/VolFil,
+         PropRawReadsPerLitre = RawPropReads/VolFil,
+         CorrectedReadsPerLitre = CorrectedReads/VolFil,
+         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFil,
+         QuantMeanPerLitre = QuantMean/VolFil) %>% 
   relocate(RawReadsPerLitre, .after=RawReads) %>% 
   relocate(PropRawReadsPerLitre, .after = RawPropReads) %>% 
   relocate(CorrectedReadsPerLitre, .after=CorrectedReads) %>% 
@@ -657,7 +690,7 @@ AtlSalmon_data_NoZero_Model <- AtlSalmon_data_NoZero %>%
                 "RawPropReads","PropRawReadsPerLitre",
                 "CorrectedReads","CorrectedReadsPerLitre",
                 "CorrectedPropReads","PropCorrectedReadsPerLitre",
-                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
+                "VolFil","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
 
 
 
@@ -1183,11 +1216,11 @@ ggsave(AtlSalmon_FinalLogModel_NoZero_plot, #plot you want to save
 #Normalize data by Vol filtered and remove any rows with 0 corrected reads
 ArcCharr_data_NoZero <- ArcticCharr_data_raw %>% 
   filter(CorrectedReads > 0) %>% 
-  mutate(RawReadsPerLitre = RawReads/VolFiltered,
-         PropRawReadsPerLitre = RawPropReads/VolFiltered,
-         CorrectedReadsPerLitre = CorrectedReads/VolFiltered,
-         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFiltered,
-         QuantMeanPerLitre = QuantMean/VolFiltered) %>% 
+  mutate(RawReadsPerLitre = RawReads/VolFil,
+         PropRawReadsPerLitre = RawPropReads/VolFil,
+         CorrectedReadsPerLitre = CorrectedReads/VolFil,
+         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFil,
+         QuantMeanPerLitre = QuantMean/VolFil) %>% 
   relocate(RawReadsPerLitre, .after=RawReads) %>% 
   relocate(PropRawReadsPerLitre, .after = RawPropReads) %>% 
   relocate(CorrectedReadsPerLitre, .after=CorrectedReads) %>% 
@@ -1207,7 +1240,7 @@ ArcCharr_data_NoZero_Model <- ArcCharr_data_NoZero %>%
                 "RawPropReads","PropRawReadsPerLitre",
                 "CorrectedReads","CorrectedReadsPerLitre",
                 "CorrectedPropReads","PropCorrectedReadsPerLitre",
-                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
+                "VolFil","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
 
 
 
@@ -1760,11 +1793,11 @@ ggsave(ArcCharr_FinalLogModel_NoZero_plot, #plot you want to save
 #Normalize data by Vol filtered and remove any rows with 0 corrected reads
 PinkSalmon_data_NoZero <- PinkSalmon_data_raw %>% 
   filter(CorrectedReads > 0) %>% 
-  mutate(RawReadsPerLitre = RawReads/VolFiltered,
-         PropRawReadsPerLitre = RawPropReads/VolFiltered,
-         CorrectedReadsPerLitre = CorrectedReads/VolFiltered,
-         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFiltered,
-         QuantMeanPerLitre = QuantMean/VolFiltered) %>% 
+  mutate(RawReadsPerLitre = RawReads/VolFil,
+         PropRawReadsPerLitre = RawPropReads/VolFil,
+         CorrectedReadsPerLitre = CorrectedReads/VolFil,
+         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFil,
+         QuantMeanPerLitre = QuantMean/VolFil) %>% 
   relocate(RawReadsPerLitre, .after=RawReads) %>% 
   relocate(PropRawReadsPerLitre, .after = RawPropReads) %>% 
   relocate(CorrectedReadsPerLitre, .after=CorrectedReads) %>% 
@@ -1784,7 +1817,7 @@ PinkSalmon_data_NoZero_Model <- PinkSalmon_data_NoZero %>%
                 "RawPropReads","PropRawReadsPerLitre",
                 "CorrectedReads","CorrectedReadsPerLitre",
                 "CorrectedPropReads","PropCorrectedReadsPerLitre",
-                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
+                "VolFil","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result")
 
 
 
@@ -2338,11 +2371,11 @@ ggsave(Final_Multiplot_NoZero,
 ####Data Prep####
 #Normalize data by Vol filtered
 All_data <- All_data_raw %>% 
-  mutate(RawReadsPerLitre = RawReads/VolFiltered,
-         PropRawReadsPerLitre = RawPropReads/VolFiltered,
-         CorrectedReadsPerLitre = CorrectedReads/VolFiltered,
-         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFiltered,
-         QuantMeanPerLitre = QuantMean/VolFiltered) %>% 
+  mutate(RawReadsPerLitre = RawReads/VolFil,
+         PropRawReadsPerLitre = RawPropReads/VolFil,
+         CorrectedReadsPerLitre = CorrectedReads/VolFil,
+         PropCorrectedReadsPerLitre = CorrectedPropReads/VolFil,
+         QuantMeanPerLitre = QuantMean/VolFil) %>% 
   relocate(RawReadsPerLitre, .after=RawReads) %>% 
   relocate(PropRawReadsPerLitre, .after = RawPropReads) %>% 
   relocate(CorrectedReadsPerLitre, .after=CorrectedReads) %>% 
@@ -2362,7 +2395,7 @@ All_data_Model <- All_data %>%
                 "RawPropReads","PropRawReadsPerLitre",
                 "CorrectedReads","CorrectedReadsPerLitre",
                 "CorrectedPropReads","PropCorrectedReadsPerLitre",
-                "VolFiltered","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result","Species") %>% 
+                "VolFil","DNAConc","DNAConcScale","Run","QuantMean","QuantMeanPerLitre","Result","Species") %>% 
   filter(!is.na(QuantMeanPerLitre)) #remove any rows with an NA in QuantMeanPerLitre
 
 #picking data transformations

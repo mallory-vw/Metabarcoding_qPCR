@@ -27,13 +27,12 @@ site_metadata_raw <- read.csv("Metadata/SiteMetadata_EnviroData_7Nov2023.csv",na
   mutate(Year=factor(Year)) 
 
 
-eDNA_data_raw <- read.csv("eDNAData/eDNA_results_PrelimCleaned_5Oct2023.csv", na.strings = "N/A") %>% 
-  mutate(CorrectedDepth = as.integer(CorrectedDepth),
-         Type=factor(Type)) %>% 
-  rename(RawVertReadsPerSample=RawVertDepthPerSample,
-         RawReads=RawDepth,
-         CorrectedReads=CorrectedDepth,
-         SampleID=Sample)
+eDNA_data_raw <- read.csv("eDNAData/eDNA_results_PrelimCleaned_8Nov2023.csv", na.strings = c("N/A","NA","")) %>% 
+  dplyr::select(!X) %>% 
+  mutate(CorrectedVertReadsPerSample=as.integer(CorrectedVertReadsPerSample),
+         CorrectedReads=as.integer(CorrectedReads),
+         Type=factor(Type))
+
 
 AtlSalmon_qPCR_raw <- read.csv("qPCRData/qPCR_AtlSalmon_results_PrelimCleaned_5Oct2023.csv") %>% 
   rename(SampleID=CEGA_Sample_ID,
@@ -180,8 +179,9 @@ eDNA_data <- eDNA_data_raw %>%
   filter(!Type %in% c("Blank","Negative")) %>%  #remove blanks and negatives
   filter(!(Type == "Unknown" & is.na(RawVertReadsPerSample))) %>% #remove the "Unknowns" that also have NA in the Total Vert Reads
   filter(RawVertReadsPerSample > 0) %>% #remove anything that had no vert reads at all
-  mutate(CorrectedPropReads = as.character(signif((CorrectedReads/RawVertReadsPerSample), digits=4))) %>% 
-  mutate(RawPropReads = as.character(signif((RawReads/RawVertReadsPerSample), digits=4)))
+  mutate(CorrectedPropReads = as.character(signif((CorrectedReads/CorrectedVertReadsPerSample), digits=4))) %>% 
+  mutate(RawPropReads = as.character(signif((RawReads/RawVertReadsPerSample), digits=4))) %>% 
+  relocate(RawPropReads, .after=RawReads)
 
 #separate data by species
 AtlSalmon_eDNA_data <- eDNA_data %>% 
