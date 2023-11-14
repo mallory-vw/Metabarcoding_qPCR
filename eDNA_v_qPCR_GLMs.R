@@ -2978,4 +2978,4 @@ ggsave(FinalLogModel_Zero_plot, #plot you want to save
 
 
 ######save workspace######
-save.image("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabardoding_qPCR/eDNA_v_qPCR_GLMs_workspace.RData")
+save.image("C:/Users/vanwyngaardenma/Documents/Bradbury/Metabarcoding/Metabarcoding_qPCR/eDNA_v_qPCR_GLMs_workspace.RData")
