@@ -157,6 +157,13 @@ sample_metadata <- sample_metadata_raw %>%
 
 rm(Samples,Sites,Names,Names_Issues)
 
+#get some data summaries
+sample_metadata %>% 
+  group_by(Year) %>% 
+  summarize(Rivers = length(unique(Code)),
+            Samples = length(unique(SampleID)))
+            
+
 
 ######eDNA data#####
 #organize total reads per sample (reads of ALL vertebrates in the sample)
@@ -204,6 +211,10 @@ AtlSalmon_qPCR_data <- AtlSalmon_qPCR_raw %>%
   mutate(QuantMean=rowMeans(select(., c("Quant1","Quant2","Quant3")), na.rm = TRUE)) %>% 
   relocate(QuantMean, .after=Quant3)
 
+#data summary
+AtlSalmon_qPCR_data %>% 
+  group_by(Sample_Year) %>% 
+  summarize(qPCRSamples = length(unique(SampleID)))
 
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 AtlSalmon_data <- AtlSalmon_eDNA_data %>% 
@@ -214,7 +225,10 @@ AtlSalmon_data <- AtlSalmon_eDNA_data %>%
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
   relocate(c(Name,Code,ReplicateSet,Year,Month,Day,Date,NewLat,NewLon),.after=Type) %>% 
   select(!Sample_Year)
-
+#data summary
+AtlSalmon_data %>% 
+  group_by(Year) %>% 
+  summarize(qPCRSamples = length(unique(SampleID)))
 
 #export
 write.csv(AtlSalmon_data, "qPCR_eDNA_AtlSalmon_CleanedData_7Nov2023.csv")
@@ -228,6 +242,11 @@ PinkSalmon_qPCR_data <- PinkSalmon_qPCR_raw %>%
   mutate(QuantMean=rowMeans(select(., c("Quant1","Quant2","Quant3")), na.rm = TRUE)) %>% 
   relocate(QuantMean, .after=Quant3)
 
+#data summary
+PinkSalmon_qPCR_data %>% 
+  group_by(Sample_Year) %>% 
+  summarize(qPCRSamples = length(unique(SampleID)))
+
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 PinkSalmon_data <- PinkSalmon_eDNA_data %>% 
   inner_join(PinkSalmon_qPCR_data) %>% 
@@ -237,7 +256,10 @@ PinkSalmon_data <- PinkSalmon_eDNA_data %>%
   relocate(CorrectedPropReads, .after = CorrectedReads) %>% 
   relocate(c(Name,Code,ReplicateSet,Year,Month,Day,Date,NewLat,NewLon),.after=Type) %>% 
   select(!Sample_Year)
-
+#data summary
+PinkSalmon_data %>% 
+  group_by(Year) %>% 
+  summarize(qPCRSamples = length(unique(SampleID)))
 #export
 write.csv(PinkSalmon_data, "qPCR_eDNA_PinkSalmon_CleanedData_7Nov2023.csv")
 
@@ -253,6 +275,11 @@ ArcticCharr_qPCR_data <- ArcticCharr_qPCR_raw %>%
   mutate(Ct2 = replace(Ct2, which(SampleID %in% c("TOM2019C3","PAN2019C1","PAN2019C3","SWA2019C3")), NA)) %>% #replace empty replicates with NA based on Notes field
   mutate(Ct3 = replace(Ct3, which(SampleID %in% c("TOM2019C3","PAN2019C1","PAN2019C3","SWA2019C3","SWA2019C1","KIN2019C1")), NA)) #replace empty replicates with NA based on Notes field
 
+#data summary
+ArcticCharr_qPCR_data %>% 
+  group_by(Sample_Year) %>% 
+  summarize(qPCRSamples = length(unique(SampleID)))
+
 #join data, keeping ONLY the samples in both qPCR and eDNA results
 ArcticCharr_data <- Charr_eDNA_data %>% 
   inner_join(ArcticCharr_qPCR_data) %>% 
@@ -263,7 +290,10 @@ ArcticCharr_data <- Charr_eDNA_data %>%
   relocate(c(Name,Code,ReplicateSet,Year,Month,Day,Date,NewLat,NewLon),.after=Type) %>% 
   select(!Sample_Year)
 
-
+#data summary
+ArcticCharr_data %>% 
+  group_by(Year) %>% 
+  summarize(qPCRSamples = length(unique(SampleID)))
 
 #export
 write.csv(ArcticCharr_data, "qPCR_eDNA_ArcticCharr_CleanedData_7Nov2023.csv")
